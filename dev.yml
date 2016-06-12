@@ -1,0 +1,9 @@
+---
+name: carlos-the-curious
+up:
+- go: 1.6.2
+
+commands:
+  build: go build
+  run-built: ./carlos-the-curious
+  test: go test ./...
