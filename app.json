@@ -1,0 +1,12 @@
+{
+  "name": "carlos-the-curious",
+  "description": "Survey slack bot for fun and profil",
+  "keywords": [
+    "survey",
+    "carlos"
+  ],
+  "image": "heroku/go:1.6",
+  "mount_dir": "src/github.com/dklassen/CarlosTheCurious",
+  "website": "http://github.com/dklassen/CarlosTheCurious",
+  "repository": "http://github.com/dklassen/CarlosTheCurious"
+}

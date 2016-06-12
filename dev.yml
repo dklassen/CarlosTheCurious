@@ -1,0 +1,15 @@
+---
+name: carlos-the-curious
+up:
+- go: 1.7.4
+
+commands:
+  build: make build
+  run: make run
+  console: make console
+  database-up: docker run -d --name carlos-postgres --net=isolated_nw -p 5432:5432 postgres
+  database-down: docker stop carlos-postgres
+  database-build: docker build --tag carlos/postgres --file Dockerfile.devdb .
+  database-clean: docker rm /carlos-postgres
+  database-console: psql -h localhost -U postgres -d carlos
+  test: go test ./...

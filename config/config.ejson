@@ -1,0 +1,8 @@
+{
+  "_public_key": "610d8a2779e348297909e883e5e590e6042b88ab07944b0c7a1467d7a093b859",
+  "slack_api_key": "EJ[1:OILrHnCswhJvPWf8cYajqFWf0jpgf/Xy0UMpTXRCBiA=:tLEi4NUafljkUjSeMPSPKxPfQAJAay2T:3H0yeRl73bnAh+easNxe0Q==]",
+  "origin": "EJ[1:OILrHnCswhJvPWf8cYajqFWf0jpgf/Xy0UMpTXRCBiA=:uVtC+pXbhhs/czFX7/o6Sp5sSXzBAP/6:+bGg9h1NJIK0fPDcFuB22ULJMBKxHaKFTVJdfkQP0evdn23N3A==]",
+  "debug": true,
+  "database_url": "EJ[1:OILrHnCswhJvPWf8cYajqFWf0jpgf/Xy0UMpTXRCBiA=:k1u6PkCoC4gaFHYWXIlD1nWgT19plVlk:n8eqBnyGGaOQpOnviyKLQ6/qnTaft5NSYNwIq5FFzbAMHtH/QLEU53VrVGFt+2NuWM086pyfwOnXI1FTihbfN22LKvmY]",
+  "workers": 1
+}
