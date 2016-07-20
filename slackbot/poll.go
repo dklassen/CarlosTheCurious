@@ -44,10 +44,6 @@ type Recipient struct {
 	SlackName string
 }
 
-// PollID returns a user and channel specific id for a currently active poll
-func (poll *Poll) PollID() string {
-	id := poll.Creator + "-" + poll.Channel
-	return id
 func NewPoll(name, creator, channel string) *Poll {
 	uuid := GenerateUUID()
 	cleanName := strings.TrimSpace(name)

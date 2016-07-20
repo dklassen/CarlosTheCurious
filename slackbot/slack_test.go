@@ -149,10 +149,6 @@ func TestCreatePoll(t *testing.T) {
 		t.Error("Got unexpected poll creator: ", poll.Creator, "expected: user")
 	}
 
-	if poll.PollID() != "user-channel" {
-		t.Error("Got unexpected poll id got: ", poll.PollID(), "expected: user-channel")
-	}
-
 	expected := []byte("Creating poll named poll-name")
 	expected = append(expected, "What was the question you wanted to ask?"...)
 
