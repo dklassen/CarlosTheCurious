@@ -54,7 +54,7 @@ func main() {
 		logrus.Fatal(usage)
 	}
 
-	err = slackbot.SetupDatabase(*conf)
+	err = slackbot.SetupDatabase(conf.DatabaseURL, conf.Debug)
 	if err != nil {
 		logrus.Panic(err)
 	}
