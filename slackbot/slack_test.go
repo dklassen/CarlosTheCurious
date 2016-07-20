@@ -76,55 +76,6 @@ func CleanSetup() Robot {
 	return robot
 }
 
-func TestCancelPoll(t *testing.T) {
-	SetupTestDatabase()
-
-	outgoing := []byte{}
-	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
-		outgoing = append(outgoing, msg.Text...)
-		return nil
-	}
-
-	var testTable = []struct {
-		TargetPoll       Poll
-		TargetMessage    Message
-		ExpectedResponse []byte
-		ExpectDeleted    bool
-	}{
-		{
-			TargetPoll:       Poll{Name: "blastoff"},
-			ExpectedResponse: []byte("Okay, cancelling the poll blastoff for you"),
-			ExpectDeleted:    true,
-			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll blastoff", DirectMention: true},
-		},
-		{
-			TargetPoll:       Poll{Name: "not_going_to_find_me"},
-			ExpectedResponse: []byte("Did not find a poll with the name blastoff"),
-			ExpectDeleted:    false,
-			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll blastoff", DirectMention: true},
-		},
-	}
-
-	for _, testEntry := range testTable {
-		robot := CleanSetup()
-		GetDB().Save(&testEntry.TargetPoll)
-
-		outgoing = []byte("")
-		robot.Dispatch(&testEntry.TargetMessage)
-
-		if bytes.Compare(outgoing, testEntry.ExpectedResponse) != 0 {
-			t.Error("Got unexpected robot response: '", string(outgoing), "' expected: '", string(testEntry.ExpectedResponse), "'")
-		}
-
-		if testEntry.ExpectDeleted == true {
-			poll, _ := FindFirstPreActivePollByName(testEntry.TargetPoll.Name)
-			if poll.DeletedAt != nil {
-				t.Error("Expected poll to be deleted")
-			}
-		}
-	}
-}
-
 func TestCreatePoll(t *testing.T) {
 	robot := CleanSetup()
 	msg := Message{User: "user", Channel: "channel"}

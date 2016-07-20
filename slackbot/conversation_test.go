@@ -177,6 +177,55 @@ func TestSendPoll(t *testing.T) {
 	}
 }
 
+func TestCancelPoll(t *testing.T) {
+	SetupTestDatabase()
+
+	outgoing := []byte{}
+	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
+		outgoing = append(outgoing, msg.Text...)
+		return nil
+	}
+
+	var testTable = []struct {
+		TargetPoll       Poll
+		TargetMessage    Message
+		ExpectedResponse []byte
+		ExpectDeleted    bool
+	}{
+		{
+			TargetPoll:       Poll{Name: "blastoff", UUID: "1"},
+			ExpectedResponse: []byte("Okay, cancelling the poll for you"),
+			ExpectDeleted:    true,
+			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll 1", DirectMention: true},
+		},
+		{
+			TargetPoll:       Poll{Name: "not_going_to_find_me", UUID: "not_going_to_find"},
+			ExpectedResponse: []byte("Oops, couldn't find the poll for you"),
+			ExpectDeleted:    false,
+			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll 2", DirectMention: true},
+		},
+	}
+
+	for _, testEntry := range testTable {
+		robot := CleanSetup()
+		GetDB().Save(&testEntry.TargetPoll)
+
+		outgoing = []byte("")
+		robot.Dispatch(&testEntry.TargetMessage)
+
+		if bytes.Compare(outgoing, testEntry.ExpectedResponse) != 0 {
+			t.Error("Got unexpected robot response: '", string(outgoing), "' expected: '", string(testEntry.ExpectedResponse), "'")
+		}
+
+		if testEntry.ExpectDeleted == true {
+			poll, _ := FindFirstPreActivePollByName(testEntry.TargetPoll.UUID)
+			if poll.DeletedAt != nil {
+				t.Error("Expected poll to be deleted")
+			}
+		}
+	}
+}
+
 func TestAnswerPollSavesResponse(t *testing.T) {
 	robot := CleanSetup()
 
