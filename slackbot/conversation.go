@@ -1,17 +1,16 @@
 package slackbot
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/Sirupsen/logrus"
 )
 
 var (
 	userIDRegex = regexp.MustCompile("<@([a-zA-Z0-9]+)>")
 	stageLookup = map[string]Stage{
-		"getQuestion":   getQuestion,
+		"initial":       getQuestion,
 		"getAnswers":    getAnswers,
 		"getRecipients": getRecipients,
 		"sendPoll":      sendPoll,
@@ -22,11 +21,21 @@ var (
 		"^create poll (.*)$":                   createPoll,
 		"^cancel poll ([a-zA-Z-0-9-_]+)$":      cancelPoll,
 		"^answer poll ([a-zA-Z-0-9-_]+) (.*$)": answerPoll,
-		"^help": usage,
+		"^list active polls$":                  activePolls,
+		"^help":                                usage,
 	}
 )
 
-func usage(robot *Robot, msg *Message, captureGroups []string) (err error) {
+func parseRecpientsText(msg Message) []Recipient {
+	recipients := []Recipient{}
+	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
+		recipient := Recipient{SlackID: match[1]}
+		recipients = append(recipients, recipient)
+	}
+	return recipients
+}
+
+func usage(robot *Robot, msg *Message, captureGroups []string) error {
 	usage := `*Description*
 
 Carlos the Curious at your service! Create and gather feedback to simple survey questions. Follow the commands below to create your poll and send it to either all members of a channel or to specific individuals. Once the poll has been created it will be sent and the responses will be collected.
@@ -37,53 +46,55 @@ Carlos the Curious at your service! Create and gather feedback to simple survey 
 ask you follow up questions to build the survey don't worry you can cancel at
 any time.
 
-*'cancel poll {poll_name}'* - Cancel a currently active or inprogress poll.
+*'cancel poll {poll_uuid}'* - Cancel a currently active or inprogress poll.
 
-*'answer poll {poll_name} {answer}'* - When Carlos sends you a direct message you can
+*'answer poll {poll_uuid} {answer}'* - When Carlos sends you a direct message you can
 answer the poll with the above command. Everything after the poll_name can be free
 text.
 
-*'show results {poll_name}'* - Display the results for the mentioned poll
+*'show poll{poll_uuid}'* - Display the results for the mentioned poll
+
+*'list active polls'* - List your active polls
 
 *'help'* - Display the help but you already knew that
 `
 	robot.SendMessage(msg.Channel, usage)
-	return err
+	return nil
 }
 
-func answerPoll(robot *Robot, msg *Message, captureGroups []string) error {
-	pollName := captureGroups[1]
-	poll := &Poll{}
-	if err := GetDB().Where("name = ? AND stage = ?", pollName, "active").First(poll).Error; err != nil || poll.ID == 0 {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Sorry about this but didn't not find a poll with the name %s", pollName))
-		return err
+func activePolls(robot *Robot, msg *Message, captures []string) (err error) {
+	polls := []*Poll{}
+	GetDB().Where("creator = ? AND channel = ? AND stage = ?", msg.User, msg.Channel, "active").Find(&polls)
+
+	var result bytes.Buffer
+	for k, v := range polls {
+		result.WriteString(fmt.Sprintf("%d. %s - id:%s", k+1, v.Question, v.UUID))
 	}
 
-	answer := captureGroups[2]
-	GetDB().Model(poll).Association("Responses").Append(PollResponse{Value: answer, SlackID: msg.User})
+	attachment := Attachment{
+		Text: result.String(),
+	}
 
-	robot.SendMessage(msg.Channel, "Thanks for responding!")
+	if len(polls) == 0 {
+		robot.SendMessage(msg.Channel, "You have no active polls")
+		return nil
+	}
+
+	robot.PostMessage(msg.Channel, "Here are the list of active polls:", attachment)
 	return nil
 }
 
 func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
-	existingPoll := Poll{}
-	GetDB().Where("creator = ? AND channel = ? AND stage != ?", msg.User, msg.Channel, "active").First(&existingPoll)
-	if existingPoll.ID != 0 {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("There is already a poll being created. Cancel the poll with: 'cancel poll %s'", existingPoll.Name))
+	existing := FindFirstInactivePollByMessage(msg)
+	if existing == nil {
+		robot.SendMessage(msg.Channel, fmt.Sprintf("There is already a poll being created. Cancel the poll with: 'cancel poll %s'", existing.UUID))
 		return fmt.Errorf("Active poll already exists")
 	}
 
 	pollName := captureGroups[1]
-	poll := &Poll{
-		Name:            strings.TrimSpace(pollName),
-		Creator:         msg.User,
-		Channel:         msg.Channel,
-		Stage:           "getQuestion",
-		PossibleAnswers: []PossibleAnswer{},
-	}
+	poll := NewPoll(pollName, msg.User, msg.Channel)
 
-	if err := GetDB().Debug().Save(poll).Error; err != nil {
+	if err := GetDB().Save(poll).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			robot.SendMessage(msg.Channel, "Sigh at the moment we need uniquely named polls. Sorry")
 		} else {
@@ -97,34 +108,53 @@ func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	return nil
 }
 
-func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
+func answerPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	pollName := captureGroups[1]
 	poll := &Poll{}
-	if err := GetDB().Where("name = ? ", pollName).First(poll).Error; err != nil {
+	if err := GetDB().Where("uuid = ? AND stage = ?", pollName, "active").First(poll).Error; err != nil || poll.ID == 0 {
+		robot.SendMessage(msg.Channel, fmt.Sprintf("Sorry about this but didn't not find a poll with the name %s", pollName))
+		return err
+	}
+
+	answer := captureGroups[2]
+	GetDB().Model(poll).Association("Responses").Append(PollResponse{Value: answer, SlackID: msg.User})
+
+	robot.SendMessage(msg.Channel, "Thanks for responding!")
+	return nil
+}
+
+func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
+	uuid := captureGroups[1]
+	poll := &Poll{}
+	if err := GetDB().Where("uuid = ?", uuid).First(poll).Error; err != nil {
+		robot.SendMessage(msg.Channel, fmt.Sprintf("Sorry about this but didn't not find a poll %s", uuid))
 		return err
 	}
 
 	if poll.ID == 0 {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Did not find a poll with the name %s", pollName))
-		return fmt.Errorf("No poll found with name : %s", pollName)
+		robot.SendMessage(msg.Channel, fmt.Sprintf("Did not find a poll with the name %s", uuid))
+		return fmt.Errorf("No poll found with name : %s", uuid)
 	}
 
 	attachment := poll.SlackPollSummary()
-	robot.PostMessage(msg.Channel, "Getting the results so far.....", attachment)
+	robot.PostMessage(msg.Channel, "", attachment)
 	return nil
 }
 
 func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
-	pollName := strings.TrimSpace(captureGroups[1])
+	uuid := strings.TrimSpace(captureGroups[1])
 	poll := &Poll{}
-	GetDB().Where("name = ? ", pollName).First(poll)
+	GetDB().Where("uuid = ? ", uuid).First(poll)
 	if poll.ID == 0 {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Did not find a poll with the name %s", pollName))
-		return fmt.Errorf("Did not find a poll with the name %s", pollName)
+		robot.SendMessage(msg.Channel, "Oops, couldn't find the poll for you")
+		return fmt.Errorf("Unable to find poll with uuid %s", uuid)
 	}
 
-	GetDB().Delete(poll)
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Okay, cancelling the poll %s for you", poll.Name))
+	if err := GetDB().Delete(poll).Error; err != nil {
+		return err
+	}
+
+	robot.SendMessage(msg.Channel, "Okay, cancelling the poll for you")
 	return nil
 }
 
@@ -155,20 +185,11 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 	return nil
 }
 
-func parseRecpientsText(msg Message) []Recipient {
-	recipients := []Recipient{}
-	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		recipient := Recipient{SlackID: match[1]}
-		recipients = append(recipients, recipient)
-	}
-	return recipients
-}
-
 func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 	poll.Stage = "sendPoll"
 	poll.Recipients = parseRecpientsText(*msg)
 	if err := GetDB().Save(&poll).Error; err != nil {
-		logrus.Error("Unable to save recipients: ", err)
+		return err
 	}
 
 	robot.PostMessage(msg.Channel, "Here's a preview of what we are going to send:", poll.SlackPreviewAttachment())
@@ -177,7 +198,7 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 
 func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 	if msg.Text != "yes" {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.Name))
+		robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
 		return nil
 	}
 
@@ -190,6 +211,6 @@ func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 		robot.PostMessage(recipient.SlackID, "", poll.SlackRecipientAttachment())
 	}
 
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Poll is live you can check in by asking me to `check poll %s`", poll.Name))
+	robot.SendMessage(msg.Channel, fmt.Sprintf("Poll is live you can check in by asking me to `show poll %s`", poll.UUID))
 	return nil
 }

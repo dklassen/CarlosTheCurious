@@ -13,24 +13,32 @@ var db *gorm.DB
 // oh rails I miss you
 // TODO:: Find out how to register the gorm models somehwere automatically if possible
 func Migrate() {
-	GetDB().AutoMigrate(
+	err := GetDB().AutoMigrate(
 		&Poll{},
 		&PossibleAnswer{},
 		&Recipient{},
 		&PollResponse{},
-	)
+	).Error
+
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 // DropDatabaseTables drops all the database tables cold turkey
 // Really could just execute a drop database and recreate which would be quicker
 // TODO:: Find out how to register the gorm models somehwere automatically if possible
 func DropDatabaseTables() {
-	GetDB().DropTableIfExists(
+	err := GetDB().DropTableIfExists(
 		&Poll{},
 		&PossibleAnswer{},
 		&Recipient{},
 		&PollResponse{},
-	)
+	).Error
+
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 // GetDB is a accessor for a shared db object

@@ -16,8 +16,6 @@ var (
 Valid commands:
 	nuke - Nuke the database and migrate back to ground zero
 	migrate - Migrate the database to the latest schema
-	up - Bring the postgres container database up
-	down - Bring the postgres container databas down (all data will be lost)
 `, os.Args[0])
 )
 
