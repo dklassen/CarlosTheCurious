@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os/exec"
 	"regexp"
 	"strings"
 	"sync/atomic"
@@ -151,6 +152,14 @@ type PostResponse struct {
 	TS      string `json:"ts"`
 	Channel string `json:"channel"`
 	Error   string `json:"error"`
+}
+
+func GenerateUUID() string {
+	output, err := exec.Command("uuidgen").Output()
+	if err != nil {
+		logrus.Fatal("Unable to generate a UUID using uuidgen check your system is compatible")
+	}
+	return strings.TrimSpace(string(output))
 }
 
 func downloadUserList(token string) (UserList, error) {
