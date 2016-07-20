@@ -16,7 +16,7 @@ func mustLoadConfig() *slackbot.Config {
 func main() {
 	conf := mustLoadConfig()
 	logrus.Info("Starting Carlos the Curious")
-	slackbot.SetupDatabase(*conf)
+	slackbot.SetupDatabase(conf.DatabaseURL, conf.Debug)
 
 	robot := slackbot.NewRobot(conf.Origin, conf.SlackAPIToken)
 	robot.Run()

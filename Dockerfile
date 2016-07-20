@@ -1,9 +1,18 @@
-FROM postgres:9.5
+from alpine:latest
 
-COPY script/dev_postgres_setup.sh /docker-entrypoint-initdb.d/init-user-db.sh
-# Adjust PostgreSQL configuration so that remote connections to the
-# database are possible.
-# Expose the PostgreSQL port
+MAINTAINER Dana Klassen <dana.klassen@shopify.com> 
+
+WORKDIR /opt
+
+RUN apk add --update ca-certificates && \
+    rm -rf /var/cache/apk/* /tmp/*
+
+RUN update-ca-certificates
+
+COPY .docker_build/carlos-the-curious bin/carlos-the-curious
+
+COPY ./script/docker-entrypoint.sh /
+
 EXPOSE 5432
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
-CMD ["postgres"]

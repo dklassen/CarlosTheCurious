@@ -1,8 +1,6 @@
 package slackbot
 
 import (
-	"fmt"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/jinzhu/gorm"
 	_ "github.com/lib/pq" // we use the postgres driver
@@ -59,11 +57,9 @@ func verifyDatabaseConnection(db *gorm.DB) {
 }
 
 // SetupDatabase opens and verifies the connection to the database
-func SetupDatabase(config Config) (err error) {
-	connectionString := fmt.Sprintf("host=%s user=%s dbname=%s sslmode=%s", config.DatabaseHost, config.DatabaseUser, config.DatabaseName, config.DatabaseSSL)
-
-	logrus.WithField("connectionString", connectionString).Info("Attempting to connect to database")
-	database, err := gorm.Open("postgres", connectionString)
+func SetupDatabase(databaseURL string, debug bool) (err error) {
+	logrus.WithField("connectionString", databaseURL).Info("Attempting to connect to database")
+	database, err := gorm.Open("postgres", databaseURL)
 	if err != nil {
 		logrus.Panic(err)
 	}
@@ -71,7 +67,7 @@ func SetupDatabase(config Config) (err error) {
 	verifyDatabaseConnection(db)
 	db.DB().SetMaxIdleConns(10)
 	db.DB().SetMaxOpenConns(100)
-	db.LogMode(config.Debug)
+	db.LogMode(debug)
 
 	return
 }

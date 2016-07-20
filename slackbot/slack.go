@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os/exec"
+	"os"
 	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/satori/go.uuid"
 
 	"golang.org/x/net/websocket"
 )
@@ -155,11 +156,7 @@ type PostResponse struct {
 }
 
 func GenerateUUID() string {
-	output, err := exec.Command("uuidgen").Output()
-	if err != nil {
-		logrus.Fatal("Unable to generate a UUID using uuidgen check your system is compatible")
-	}
-	return strings.TrimSpace(string(output))
+	return uuid.NewV4().String()
 }
 
 func downloadUserList(token string) (UserList, error) {
@@ -467,9 +464,27 @@ func (robot *Robot) DownloadUsersMap() {
 	robot.Users = users.Members
 }
 
+func HerokuServer() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+
+	logrus.Info("listening on port:", port)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+
+	if err != nil {
+		logrus.Fatal(err)
+	}
+}
+
 // Run is the entry point for Carlos to setup a connection with Slack and
 // the channels we use for listening and posting messages
 func (robot Robot) Run() {
+	if os.Getenv("PLATFORM") == "HEROKU" {
+		go HerokuServer()
+	}
+
 	robot.SlackConnect()
 	robot.DownloadUsersMap()
 	robot.Listen()
