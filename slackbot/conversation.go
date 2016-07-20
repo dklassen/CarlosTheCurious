@@ -137,7 +137,7 @@ func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	}
 
 	attachment := poll.SlackPollSummary()
-	robot.PostMessage(msg.Channel, "Getting the results so far.....", attachment)
+	robot.PostMessage(msg.Channel, "", attachment)
 	return nil
 }
 
