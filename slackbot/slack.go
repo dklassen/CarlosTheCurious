@@ -412,8 +412,9 @@ func (robot *Robot) Dispatch(msg *Message) {
 				"Text":    msg.Text,
 			}).Info("Matched command")
 
-			err := cmd.handlerFunc(robot, msg, captureGroups)
-			logrus.Error(err)
+			if err := cmd.handlerFunc(robot, msg, captureGroups); err != nil {
+				logrus.Error(err)
+			}
 			return
 		}
 
