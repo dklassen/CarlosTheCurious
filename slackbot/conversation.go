@@ -27,6 +27,14 @@ var (
 )
 
 func usage(robot *Robot, msg *Message, captureGroups []string) (err error) {
+func parseRecpientsText(msg Message) []Recipient {
+	recipients := []Recipient{}
+	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
+		recipient := Recipient{SlackID: match[1]}
+		recipients = append(recipients, recipient)
+	}
+	return recipients
+}
 	usage := `*Description*
 
 Carlos the Curious at your service! Create and gather feedback to simple survey questions. Follow the commands below to create your poll and send it to either all members of a channel or to specific individuals. Once the poll has been created it will be sent and the responses will be collected.
@@ -155,20 +163,11 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 	return nil
 }
 
-func parseRecpientsText(msg Message) []Recipient {
-	recipients := []Recipient{}
-	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		recipient := Recipient{SlackID: match[1]}
-		recipients = append(recipients, recipient)
-	}
-	return recipients
-}
-
 func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 	poll.Stage = "sendPoll"
 	poll.Recipients = parseRecpientsText(*msg)
 	if err := GetDB().Save(&poll).Error; err != nil {
-		logrus.Error("Unable to save recipients: ", err)
+		return err
 	}
 
 	robot.PostMessage(msg.Channel, "Here's a preview of what we are going to send:", poll.SlackPreviewAttachment())
