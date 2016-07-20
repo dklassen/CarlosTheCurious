@@ -3,6 +3,7 @@ package slackbot
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 )
@@ -57,11 +58,20 @@ func NewPoll(name, creator, channel string) *Poll {
 	}
 }
 
+func FindFirstPollByStage(name, stage string) *Poll {
+	poll := &Poll{}
+	GetDB().Where("name = ? AND stage = ?", name, stage).First(poll)
+	if poll.ID == 0 {
+		return nil
+	}
+	return poll
+}
+
 // FindFirstPreActivePollByName finds the first preactive poll based on name
 // NOTE:: OMG this is bad lets get rid of these
 func FindFirstPreActivePollByName(name string) (*Poll, error) {
 	poll := &Poll{}
-	GetDB().Where("name = ? AND stage != ?", name, "active").First(poll)
+	GetDB().Where("uuid = ? AND stage != ?", name, "active").First(poll)
 
 	if poll.ID == 0 {
 		return poll, fmt.Errorf("No inactive poll with %s found", name)
@@ -93,6 +103,18 @@ func FindFirstActivePollByMessage(msg Message) (*Poll, error) {
 		return nil, err
 	}
 	return poll, nil
+}
+
+// FindFirstActivePollByMessage finds the first active poll using the user and channel
+// NOTE:: OMG this is bad lets get rid of these
+func FindFirstInactivePollByMessage(msg *Message) *Poll {
+	poll := &Poll{}
+	GetDB().Where("creator = ? AND channel = ? AND stage != ?", msg.User, msg.Channel, "active").First(&poll)
+
+	if poll.ID != 0 {
+		return nil
+	}
+	return poll
 }
 
 // FindRecipientByID finds the recipient based on the poll and slack user id
@@ -199,7 +221,7 @@ func (poll *Poll) SlackPreviewAttachment() Attachment {
 func (poll *Poll) SlackRecipientAttachment() Attachment {
 	return Attachment{
 		Title:   "Question",
-		Pretext: fmt.Sprintf("We have a question for you. You can answer via `answer poll %s {insert response}`", poll.Name),
+		Pretext: fmt.Sprintf("We have a question for you. You can answer via `answer poll %s {insert response}`", poll.UUID),
 		Text:    poll.Question,
 		Fields: []AttachmentField{
 			AttachmentField{
