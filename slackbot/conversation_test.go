@@ -78,17 +78,17 @@ func TestGetRecipients(t *testing.T) {
 		ExpectedResponsesCount int
 	}{
 		{
-			TestPoll:               Poll{Name: "test1"},
+			TestPoll:               Poll{Name: "test1", UUID: "1"},
 			RecipientsMsg:          "<@U1231231>",
 			ExpectedResponsesCount: 1,
 		},
 		{
-			TestPoll:               Poll{Name: "test2"},
+			TestPoll:               Poll{Name: "test2", UUID: "2"},
 			RecipientsMsg:          "<@U1231231>, <@U1231256>",
 			ExpectedResponsesCount: 2,
 		},
 		{
-			TestPoll:               Poll{Name: "test3"},
+			TestPoll:               Poll{Name: "test3", UUID: "3"},
 			RecipientsMsg:          "here are the recipients: <@U1231231>, <@U1231256>",
 			ExpectedResponsesCount: 2,
 		},
@@ -126,9 +126,9 @@ func TestSendPoll(t *testing.T) {
 	}{
 		// Test we don't send the poll unless we send yes
 		{
-			InputPoll:           Poll{Name: "test1", Creator: "derp", Channel: "dorp"},
+			InputPoll:           Poll{Name: "test1", UUID: "1", Creator: "derp", Channel: "dorp"},
 			InputMessage:        Message{Text: "no", User: "derp", Channel: "dorp"},
-			ExpectedMessage:     []byte("Okay not going to send poll. You can cancel with `cancel poll test1`"),
+			ExpectedMessage:     []byte("Okay not going to send poll. You can cancel with `cancel poll 1`"),
 			ExpectedPostMessage: "",
 			ExpectedStage:       "",
 			ExpectedRequests:    0,
@@ -136,9 +136,9 @@ func TestSendPoll(t *testing.T) {
 		// Test when reply with yes we transition poll to active and send message
 		// no recipients so no requests
 		{
-			InputPoll:           Poll{Name: "test2", Creator: "derp", Channel: "dorp"},
+			InputPoll:           Poll{Name: "test2", UUID: "2", Creator: "derp", Channel: "dorp"},
 			InputMessage:        Message{Text: "yes", User: "derp", Channel: "dorp"},
-			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `check poll test2`"),
+			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `show poll 2`"),
 			ExpectedPostMessage: "",
 			ExpectedStage:       "active",
 			ExpectedRequests:    0,
@@ -146,9 +146,9 @@ func TestSendPoll(t *testing.T) {
 		{
 			// Test poll has a single recipient and should progress to the active state and try posting one message to
 			// the recipient
-			InputPoll:           Poll{Name: "test3", Creator: "derp", Channel: "dorp", Recipients: []Recipient{Recipient{SlackID: "Ben", SlackName: "Oro"}}},
+			InputPoll:           Poll{Name: "test3", UUID: "3", Creator: "derp", Channel: "dorp", Recipients: []Recipient{Recipient{SlackID: "Ben", SlackName: "Oro"}}},
 			InputMessage:        Message{Text: "yes", User: "derp", Channel: "dorp"},
-			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `check poll test3`"),
+			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `show poll 3`"),
 			ExpectedPostMessage: "",
 			ExpectedStage:       "active",
 			ExpectedRequests:    1,
@@ -245,16 +245,16 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 	}{
 		// Perfect case where the responder is able to save the response to the recipient
 		{
-			InputPoll:            Poll{Name: "test-1", Channel: "dorp", Creator: "Merv", Stage: "active", Recipients: []Recipient{{SlackID: "1234"}}},
+			InputPoll:            Poll{Name: "test-1", UUID: "1", Channel: "dorp", Creator: "Merv", Stage: "active", Recipients: []Recipient{{SlackID: "1234"}}},
 			InputMsg:             Message{User: "1234", Channel: "Private_Channel"},
-			InputCaptures:        []string{"everything", "test-1", "Why do we not get ice cream on thursdays?"},
+			InputCaptures:        []string{"everything", "1", "Why do we not get ice cream on thursdays?"},
 			ExpectedSuccess:      true,
 			ExpectedResponse:     PollResponse{SlackID: "1234", Value: "Why do we not get ice cream on thursdays?"},
 			ExpectedRobotMessage: []byte("Thanks for responding!"),
 		},
 		// Poll is not in the active stage so not ready to answer and will fail
 		{
-			InputPoll:            Poll{Name: "test-2", Channel: "dorp", Creator: "Merv", Stage: "sendPoll", Recipients: []Recipient{{SlackID: "1234"}}},
+			InputPoll:            Poll{Name: "test-2", UUID: "2", Channel: "dorp", Creator: "Merv", Stage: "sendPoll", Recipients: []Recipient{{SlackID: "1234"}}},
 			InputMsg:             Message{User: "1234", Channel: "Private_Channel"},
 			InputCaptures:        []string{"everything", "test-2", "Why do we not get ice cream on thursdays?"},
 			ExpectedSuccess:      false,

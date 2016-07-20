@@ -221,7 +221,7 @@ func TestConversationFlow(t *testing.T) {
 			NextMsg:       "create poll test-poll",
 		},
 		{
-			ExpectedStage: "getQuestion",
+			ExpectedStage: "initial",
 			ExpectedText:  []byte("Creating poll named test-pollWhat was the question you wanted to ask?"),
 			NextMsg:       "Here is your question",
 		},

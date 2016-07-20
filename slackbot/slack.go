@@ -315,7 +315,7 @@ func (robot *Robot) Listen() {
 			msg := &Message{}
 			err := receiveOverWebsocket(robot.Connection, msg)
 			if err != nil {
-				logrus.Error("Error receiving over websocket: ", err)
+				logrus.Error("Error receiving over websocket: ", err.Error())
 			}
 			robot.ListenChan <- *msg
 		}
@@ -405,15 +405,17 @@ func (robot *Robot) Dispatch(msg *Message) {
 		cmd, captureGroups := robot.match(msg)
 
 		if cmd != nil {
-			cmd.handlerFunc(robot, msg, captureGroups)
+
+			logrus.WithFields(logrus.Fields{
+				"Channel": msg.Channel,
+				"User":    msg.User,
+				"Text":    msg.Text,
+			}).Info("Matched command")
+
+			err := cmd.handlerFunc(robot, msg, captureGroups)
+			logrus.Error(err)
 			return
 		}
-
-		logrus.WithFields(logrus.Fields{
-			"Channel": msg.Channel,
-			"User":    msg.User,
-			"Text":    msg.Text,
-		}).Info("Unable to dispatch passing on to conversation handler")
 
 		robot.continueConversation(msg)
 	}
