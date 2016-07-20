@@ -2,17 +2,13 @@ package slackbot
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 
 	"golang.org/x/net/websocket"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // MockHttpClient so we can capture requests and check we called what
@@ -33,15 +29,12 @@ func (client *MockHTTPClient) Do(req *http.Request) (resp *http.Response, err er
 
 func init() {
 	os.Setenv("GOENV", "test")
-	dockerMachineIP, err := exec.Command("docker-machine", "ip").Output()
-	if err != nil {
-		logrus.Panic("Unable to get docker machine ip for postgres container")
+	databaseURL := "postgres://postgres:@127.0.0.1/carlos_test?sslmode=disable"
+	conf := &Config{
+		DatabaseURL: databaseURL,
+		Debug:       false,
 	}
-	dbConnection := fmt.Sprintf("host=%s user=postgres dbname=carlos_test sslmode=disable", dockerMachineIP)
-	config := &Config{
-		DatabaseConnectionString: dbConnection,
-	}
-	SetupDatabase(*config)
+	SetupDatabase(conf.DatabaseURL, conf.Debug)
 }
 
 var testMatch = func(handlers map[string]Handler, msg *Message) (cmd *Handler, capture []string) {
@@ -87,6 +80,10 @@ func TestCreatePoll(t *testing.T) {
 		return nil
 	}
 
+	GenerateUUID = func() string {
+		return "amazing"
+	}
+
 	err := createPoll(&robot, &msg, captureGroups)
 	if err != nil {
 		t.Error(err)
@@ -100,11 +97,10 @@ func TestCreatePoll(t *testing.T) {
 		t.Error("Got unexpected poll creator: ", poll.Creator, "expected: user")
 	}
 
-	expected := []byte("Creating poll named poll-name")
-	expected = append(expected, "What was the question you wanted to ask?"...)
+	expected := []byte("Creating poll poll-name. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?")
 
 	if bytes.Compare(outgoing, expected) != 0 {
-		t.Error("Expected output messages were not seen")
+		t.Error("Expected output messages were not seen got: ", string(outgoing), " instead of: ", string(expected))
 	}
 }
 
@@ -208,7 +204,9 @@ func TestConversationFlow(t *testing.T) {
 		outgoing = append(outgoing, msg.Text...)
 		return nil
 	}
-
+	GenerateUUID = func() string {
+		return "blah"
+	}
 	var testMessages = []struct {
 		ExpectedStage  string
 		ExpectedText   []byte
@@ -222,7 +220,7 @@ func TestConversationFlow(t *testing.T) {
 		},
 		{
 			ExpectedStage: "initial",
-			ExpectedText:  []byte("Creating poll named test-pollWhat was the question you wanted to ask?"),
+			ExpectedText:  []byte("Creating poll test-poll. You can cancel the poll any time with `cancel poll blah`What was the question you wanted to ask?"),
 			NextMsg:       "Here is your question",
 		},
 		{

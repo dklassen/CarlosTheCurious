@@ -155,7 +155,7 @@ type PostResponse struct {
 	Error   string `json:"error"`
 }
 
-func GenerateUUID() string {
+var GenerateUUID = func() string {
 	return uuid.NewV4().String()
 }
 

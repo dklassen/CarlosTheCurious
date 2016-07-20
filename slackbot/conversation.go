@@ -103,7 +103,7 @@ func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
 		return err
 	}
 
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Creating poll named %s", pollName))
+	robot.SendMessage(msg.Channel, fmt.Sprintf("Creating poll %s. You can cancel the poll any time with `cancel poll %s`", pollName, poll.UUID))
 	robot.SendMessage(msg.Channel, "What was the question you wanted to ask?")
 	return nil
 }
