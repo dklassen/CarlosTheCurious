@@ -11,6 +11,7 @@ import (
 type Poll struct {
 	gorm.Model
 	Name            string `gorm:"not null;unique"`
+	UUID            string `gorm:"not null;unique"`
 	Channel         string `gorm:"not null"`
 	Creator         string `gorm:"not null"`
 	Stage           string
@@ -47,6 +48,17 @@ type Recipient struct {
 func (poll *Poll) PollID() string {
 	id := poll.Creator + "-" + poll.Channel
 	return id
+func NewPoll(name, creator, channel string) *Poll {
+	uuid := GenerateUUID()
+	cleanName := strings.TrimSpace(name)
+	return &Poll{
+		Name:            cleanName,
+		UUID:            uuid,
+		Creator:         creator,
+		Channel:         channel,
+		Stage:           "initial",
+		PossibleAnswers: []PossibleAnswer{},
+	}
 }
 
 // FindFirstPreActivePollByName finds the first preactive poll based on name
