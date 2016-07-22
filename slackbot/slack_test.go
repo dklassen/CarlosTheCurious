@@ -29,10 +29,16 @@ func (client *MockHTTPClient) Do(req *http.Request) (resp *http.Response, err er
 
 func init() {
 	os.Setenv("GOENV", "test")
+	debug := false
+	debugEnv := os.Getenv("DEBUG")
+	if debugEnv == "true" {
+		debug = true
+	}
+
 	databaseURL := "postgres://postgres:@127.0.0.1/carlos_test?sslmode=disable"
 	conf := &Config{
 		DatabaseURL: databaseURL,
-		Debug:       false,
+		Debug:       debug,
 	}
 	SetupDatabase(conf.DatabaseURL, conf.Debug)
 }
