@@ -3,6 +3,7 @@ package slackbot
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -464,6 +465,8 @@ func (robot *Robot) DownloadUsersMap() {
 	robot.Users = users.Members
 }
 
+// HerokuServer is a small routine which spins up a server on the port
+// Heroku gives us and listens on
 func HerokuServer() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -471,6 +474,10 @@ func HerokuServer() {
 	}
 
 	logrus.Info("listening on port:", port)
+	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "pong")
+	})
+
 	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
 	if err != nil {
