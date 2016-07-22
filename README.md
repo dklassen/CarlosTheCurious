@@ -16,14 +16,12 @@ What was the question you wanted to ask?
 dana [10:40 PM]  
 Did you remember to write tests first?
 
-new messages
 carlos_the_curiousBOT [10:40 PM]  
 What are the possible responses (comma separated)?
 
 dana [10:40 PM]  
 yes,no
 
-new messages
 carlos_the_curiousBOT [10:40 PM]  
 Who should we send this to?
 
