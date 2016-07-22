@@ -2,7 +2,7 @@ package main
 
 import (
 	logrus "github.com/Sirupsen/logrus"
-	"github.com/dklassen/carlos-the-curious/slackbot"
+	"github.com/dklassen/CarlosTheCurious/slackbot"
 )
 
 func mustLoadConfig() *slackbot.Config {

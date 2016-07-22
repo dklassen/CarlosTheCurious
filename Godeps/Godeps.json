@@ -1,5 +1,5 @@
 {
-	"ImportPath": "github.com/dklassen/carlos-the-curious",
+	"ImportPath": "github.com/dklassen/CarlosTheCurious",
 	"GoVersion": "go1.6",
 	"Deps": [
 		{
@@ -9,7 +9,8 @@
 		},
 		{
 			"ImportPath": "github.com/jinzhu/gorm",
-			"Rev": "84942c60b8f8ec1523a8dca67a1c61570703bd88"
+			"Comment": "v1.0-50-ga646b13",
+			"Rev": "a646b13548ec0aa812fe805b2780f460dd2771b6"
 		},
 		{
 			"ImportPath": "github.com/jinzhu/inflection",
