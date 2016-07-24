@@ -1,1 +1,1 @@
-web: carlos-the-curious --database_url=$DATABASE_URL --token=$SLACKTOKEN
+web: CarlosTheCurious --database_url=$DATABASE_URL --token=$SLACKTOKEN
