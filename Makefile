@@ -13,8 +13,17 @@ build: $(DOCKER_CMD)
 clean:
 	rm -rf $(DOCKER_BUILD)
 
-heroku: $(DOCKER_CMD)
-	heroku container:push web
+run:
+	docker run --net=host --rm -it -e "DATABASE_URL=$(DATABASE_URL)" -e "SLACKTOKEN=$(SLACKTOKEN)" carlos-the-curious
 
-dev_database:
-	docker run -d --name carlos-postgres --net=isolated_nw -p 5432:5432 postgres
+database-up:
+	docker run -d --name carlos-postgres --net=host -p 5432:5432 postgres
+
+database-down:
+	docker stop carlos-postgres
+
+database-build:
+	docker build --tag carlos/postgres --file Dockerfile.devdb .
+
+database-clean:
+	docker rm /carlos-postgres
