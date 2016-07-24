@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dklassen/carlos-the-curious/slackbot"
+	"github.com/dklassen/CarlosTheCurious/slackbot"
 
 	logrus "github.com/Sirupsen/logrus"
 )

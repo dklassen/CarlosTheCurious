@@ -6,7 +6,7 @@ import (
 	_ "github.com/lib/pq" // we use the postgres driver
 )
 
-var db *gorm.DB
+var database *gorm.DB
 
 // Migrate is at the moment where we list all the Gorm Models we are using so
 // we can perform a db migration. This is probably no the best solution to the problem
@@ -43,10 +43,10 @@ func DropDatabaseTables() {
 
 // GetDB is a accessor for a shared db object
 func GetDB() *gorm.DB {
-	if db == nil {
+	if database == nil {
 		logrus.Panic("Database was not instantiated. Call SetupDatabase during application setup")
 	}
-	return db
+	return database
 }
 
 func verifyDatabaseConnection(db *gorm.DB) {
@@ -57,17 +57,17 @@ func verifyDatabaseConnection(db *gorm.DB) {
 }
 
 // SetupDatabase opens and verifies the connection to the database
-func SetupDatabase(databaseURL string, debug bool) (err error) {
+func SetupDatabase(databaseURL string, debug bool) error {
+	var err error
 	logrus.WithField("connectionString", databaseURL).Info("Attempting to connect to database")
-	database, err := gorm.Open("postgres", databaseURL)
+	database, err = gorm.Open("postgres", databaseURL)
 	if err != nil {
 		logrus.Panic(err)
 	}
-	db = &database
-	verifyDatabaseConnection(db)
-	db.DB().SetMaxIdleConns(10)
-	db.DB().SetMaxOpenConns(100)
-	db.LogMode(debug)
+	verifyDatabaseConnection(database)
+	database.DB().SetMaxIdleConns(10)
+	database.DB().SetMaxOpenConns(100)
+	database.LogMode(debug)
 
-	return
+	return err
 }

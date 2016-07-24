@@ -1,5 +1,7 @@
 # Carlos The Curious
 
+[![CircleCI](https://circleci.com/gh/dklassen/CarlosTheCurious/tree/master.svg?style=svg)](https://circleci.com/gh/dklassen/CarlosTheCurious/tree/master)
+
 Welcome dear world to yet another survey slackbot. This started out as an attempt to learn some Golang and the Slack API. I wanted to build a bot that would be used to pose single simple questions to groups or individuals. The goal to drip health and engagement data ( okay and some fun team trivia) from Slack. Yes, this has be done before but there is nothing like writing something for yourself to learn.
 This is still a work in progress but the conversation flow goes like this. Open a private message with Carlos:
 
