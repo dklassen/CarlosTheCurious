@@ -485,11 +485,24 @@ func HerokuServer() {
 	}
 }
 
+// HerokuPing hits the heroku endpoint every 5 min to keep process awake
+func HerokuPing() {
+	pingInterval := time.NewTicker(time.Duration(5) * time.Minute)
+	for {
+		select {
+		case <-pingInterval.C:
+			logrus.Info("Pinging Heroku server")
+			http.Get("https://carlos-the-curious.herokuapp.com/status")
+		}
+	}
+}
+
 // Run is the entry point for Carlos to setup a connection with Slack and
 // the channels we use for listening and posting messages
 func (robot Robot) Run() {
 	if os.Getenv("PLATFORM") == "HEROKU" {
 		go HerokuServer()
+		go HerokuPing()
 	}
 
 	robot.SlackConnect()
