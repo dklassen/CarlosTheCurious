@@ -1,18 +1,28 @@
-from alpine:latest
+FROM golang:1.6-alpine
 
 MAINTAINER Dana Klassen <dana.klassen@shopify.com> 
 
-WORKDIR /opt
+ENV PROJECT /go/src/github.com/dklassen/CarlosTheCurious
+WORKDIR $PROJECT
 
-RUN apk add --update ca-certificates && \
-    rm -rf /var/cache/apk/* /tmp/*
+RUN mkdir -p $PROJECT
+COPY . $PROJECT
+
+RUN apk add --update ca-certificates
+RUN rm -rf /var/cache/apk/* /tmp/*
 
 RUN update-ca-certificates
 
-COPY .docker_build/carlos-the-curious bin/carlos-the-curious
+RUN apk update && \
+    apk upgrade && \
+    apk add bash \ 
+            git \
+            openssh
 
-COPY ./script/docker-entrypoint.sh /
+
+RUN go get github.com/tools/godep
+RUN godep go install -v 
 
 EXPOSE 5432
-ENTRYPOINT ["/docker-entrypoint.sh"]
 
+ENTRYPOINT $PROJECT/script/docker-entrypoint.sh
