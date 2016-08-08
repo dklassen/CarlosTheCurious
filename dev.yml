@@ -4,8 +4,9 @@ up:
 - go: 1.6.2
 
 commands:
-  build: go build
-  run-built: ./carlos-the-curious
+  build: make build
+  run: make run
+  console: make console
   database-up: docker run -d --name carlos-postgres --net=isolated_nw -p 5432:5432 postgres
   database-down: docker stop carlos-postgres
   database-build: docker build --tag carlos/postgres --file Dockerfile.devdb .

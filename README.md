@@ -71,11 +71,10 @@ Lots left to do:
 
 ## Development
 
-First before ou doing anything setup Docker for Mac. Once up and running You can build the project via `make build`. This clean previous builds and create a new image for you. To use Carlos you will need to have a `postgres` database running somewhere. I would suggest using the postgres docker container which should setup everything at least for development.
+First before you doing anything setup Docker for Mac. Once up and running You can build the project via `make build`. This will build the project inside the container. To use Carlos you will need to have a `postgres` database running somewhere. I would suggest using the postgres docker container which should setup everything at least for development. You can set this up via `make database-build` which will create the container. You can run the container via `make database-up` and bring down with `make database-down`.
 
 Run the container with:
-`docker run -d --net=host --name carlos-postgres -p 5432:5432 postgres`.
+`DATABASE_URL={insert database URL} SLACK_TOKEN={insert your slack token} make run`
 
-Once the container is setup you can run the container with:
-
+But, If you want to trigger the container yourself:
 `docker run --net=host --rm -it -e "DATABASE_URL=postgres://postgres:@127.0.0.1/carlos?sslmode=disable" -e "SLACKTOKEN={{insert your slack token here}}" carlos-the-curious`

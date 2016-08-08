@@ -14,7 +14,7 @@
 		},
 		{
 			"ImportPath": "github.com/jinzhu/inflection",
-			"Rev": "3272df6c21d04180007eb3349844c89a3856bc25"
+			"Rev": "8f4d3a0d04ce0b7c0cf3126fb98524246d00d102"
 		},
 		{
 			"ImportPath": "github.com/lib/pq",
