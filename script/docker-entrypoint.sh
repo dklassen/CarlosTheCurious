@@ -1,5 +1,5 @@
 #!/bin/sh
 set -xeo
 
-exec /go/bin/carlos-the-curious --token=$SLACKTOKEN\
-                                --database_url=$DATABASE_URL
+exec CarlosTheCurious  --token=$SLACKTOKEN\
+                       --database_url=$DATABASE_URL
