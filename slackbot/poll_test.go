@@ -15,7 +15,6 @@ func TestSlackPreviewAttachments(t *testing.T) {
 			// A perfect poll and attachment combo which expects all the fields
 			// and no trouble
 			Input: &Poll{
-				Name:     "Derp",
 				Question: "The pig is in the pudding",
 				Recipients: []Recipient{
 					Recipient{SlackID: "derp", SlackName: "oh ya"},
@@ -26,7 +25,6 @@ func TestSlackPreviewAttachments(t *testing.T) {
 					PossibleAnswer{Value: "2"},
 				},
 			}, Expected: Attachment{
-				Title:   "Derp",
 				Pretext: "Look good to you (yes/no)?",
 				Text:    "The pig is in the pudding",
 				Fields: []AttachmentField{
@@ -77,7 +75,6 @@ func TestResponseSummaryField(t *testing.T) {
 		ExpectedAttachment string
 	}{
 		{
-			Poll:               Poll{Name: "wootzone", Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "derp"}}},
 			ExpectedAttachment: "100% - 1 out of 1",
 		},
 	}

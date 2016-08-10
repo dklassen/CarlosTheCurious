@@ -390,7 +390,7 @@ func (robot Robot) continueConversation(msg *Message) {
 			"user":      msg.User,
 			"channel":   msg.Channel,
 			"poll_id":   poll.ID,
-			"poll_name": poll.Name,
+			"poll_uuid": poll.UUID,
 		}).Error("Error continuing conversation: ", err)
 	}
 
@@ -403,7 +403,6 @@ func (robot *Robot) Dispatch(msg *Message) {
 		cmd, captureGroups := robot.match(msg)
 
 		if cmd != nil {
-
 			logrus.WithFields(logrus.Fields{
 				"Channel": msg.Channel,
 				"User":    msg.User,
@@ -415,7 +414,6 @@ func (robot *Robot) Dispatch(msg *Message) {
 			}
 			return
 		}
-
 		robot.continueConversation(msg)
 	}
 }

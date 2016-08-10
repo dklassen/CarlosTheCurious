@@ -11,7 +11,6 @@ import (
 // Poll is the object we build up with questions we ask the user in Slack
 type Poll struct {
 	gorm.Model
-	Name            string `gorm:"not null;unique"`
 	UUID            string `gorm:"not null;unique"`
 	Channel         string `gorm:"not null"`
 	Creator         string `gorm:"not null"`
@@ -47,9 +46,7 @@ type Recipient struct {
 
 func NewPoll(name, creator, channel string) *Poll {
 	uuid := GenerateUUID()
-	cleanName := strings.TrimSpace(name)
 	return &Poll{
-		Name:            cleanName,
 		UUID:            uuid,
 		Creator:         creator,
 		Channel:         channel,
@@ -192,7 +189,6 @@ func recipientsField(poll *Poll) AttachmentField {
 // of the current statistics for a running or completed poll.
 func (poll *Poll) SlackPollSummary() Attachment {
 	return Attachment{
-		Title:   poll.Name,
 		Pretext: "Here are the results so far:",
 		Text:    poll.Question,
 		Fields: []AttachmentField{
@@ -207,7 +203,6 @@ func (poll *Poll) SlackPollSummary() Attachment {
 // and sent as part of the attachments field in the PostMessage api call
 func (poll *Poll) SlackPreviewAttachment() Attachment {
 	return Attachment{
-		Title:   poll.Name,
 		Pretext: "Look good to you (yes/no)?",
 		Text:    poll.Question,
 		Fields: []AttachmentField{
