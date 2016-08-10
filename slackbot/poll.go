@@ -1,11 +1,14 @@
 package slackbot
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/jinzhu/gorm"
+)
+
+const (
+	ResponsePoll = "response"
+	FeedbackPoll = "feedback"
 )
 
 // Poll is the object we build up with questions we ask the user in Slack
@@ -15,6 +18,7 @@ type Poll struct {
 	Channel         string `gorm:"not null"`
 	Creator         string `gorm:"not null"`
 	Stage           string
+	Kind            string `gorm:"not null"`
 	Question        string
 	Recipients      []Recipient
 	Responses       []PollResponse
@@ -44,10 +48,11 @@ type Recipient struct {
 	SlackName string
 }
 
-func NewPoll(name, creator, channel string) *Poll {
+func NewPoll(kind, creator, channel string) *Poll {
 	uuid := GenerateUUID()
 	return &Poll{
 		UUID:            uuid,
+		Kind:            kind,
 		Creator:         creator,
 		Channel:         channel,
 		Stage:           "initial",
@@ -79,12 +84,12 @@ func FindFirstPreActivePollByName(name string) (*Poll, error) {
 // FindFirstActivePollByName does what it says and finds the first poll it can that is
 // in the active state
 // NOTE:: OMG this is bad lets get rid of these
-func FindFirstActivePollByName(name string) (*Poll, error) {
+func FindFirstActivePollByUUID(uuid string) (*Poll, error) {
 	poll := &Poll{}
-	GetDB().Where("name = ? AND stage = ?", name, "active").First(poll)
+	GetDB().Where("uuid = ? AND stage = ?", uuid, "active").First(poll)
 
 	if poll.ID == 0 {
-		return poll, fmt.Errorf("No active poll with %s found", name)
+		return poll, fmt.Errorf("No active poll with %s found", uuid)
 	}
 	return poll, nil
 }
@@ -96,22 +101,21 @@ func FindFirstActivePollByMessage(msg Message) (*Poll, error) {
 	GetDB().Where("creator = ? AND channel = ? AND stage = ?", msg.User, msg.Channel, "active").First(&poll)
 
 	if poll.ID != 0 {
-		err := errors.New("No active poll found")
-		return nil, err
+		return poll, fmt.Errorf("No active poll found")
 	}
 	return poll, nil
 }
 
 // FindFirstActivePollByMessage finds the first active poll using the user and channel
 // NOTE:: OMG this is bad lets get rid of these
-func FindFirstInactivePollByMessage(msg *Message) *Poll {
+func FindFirstInactivePollByMessage(msg *Message) (*Poll, error) {
 	poll := &Poll{}
 	GetDB().Where("creator = ? AND channel = ? AND stage != ?", msg.User, msg.Channel, "active").First(&poll)
 
-	if poll.ID != 0 {
-		return nil
+	if poll.ID == 0 {
+		return poll, fmt.Errorf("No poll found")
 	}
-	return poll
+	return poll, nil
 }
 
 // FindRecipientByID finds the recipient based on the poll and slack user id
@@ -185,10 +189,19 @@ func recipientsField(poll *Poll) AttachmentField {
 	}
 }
 
+func pollTypeField(poll *Poll) AttachmentField {
+	return AttachmentField{
+		Title: "Poll Type:",
+		Value: poll.Kind,
+		Short: true,
+	}
+}
+
 // SlackPollSummary builds an attachment for the PostMessage api that shows a summary
 // of the current statistics for a running or completed poll.
 func (poll *Poll) SlackPollSummary() Attachment {
 	return Attachment{
+		Title:   poll.UUID,
 		Pretext: "Here are the results so far:",
 		Text:    poll.Question,
 		Fields: []AttachmentField{
@@ -202,28 +215,37 @@ func (poll *Poll) SlackPollSummary() Attachment {
 // SlackPreviewAttachment generates an object which is translated to json
 // and sent as part of the attachments field in the PostMessage api call
 func (poll *Poll) SlackPreviewAttachment() Attachment {
+	attachments := []AttachmentField{}
+
+	attachments = append(attachments, pollTypeField(poll))
+	attachments = append(attachments, recipientsField(poll))
+
+	if poll.Kind == "response" {
+		attachments = append(attachments, possibleAnswerField(poll))
+	}
+
 	return Attachment{
+		Title:   poll.UUID,
 		Pretext: "Look good to you (yes/no)?",
 		Text:    poll.Question,
-		Fields: []AttachmentField{
-			recipientsField(poll),
-			possibleAnswerField(poll),
-		},
+		Fields:  attachments,
 	}
 }
 
 // SlackRecipientAttachment is the attachment that gets sent to the recipient
 func (poll *Poll) SlackRecipientAttachment() Attachment {
+	attachments := []AttachmentField{}
+
+	attachments = append(attachments, pollTypeField(poll))
+
+	if poll.Kind == "response" {
+		attachments = append(attachments, possibleAnswerField(poll))
+	}
+
 	return Attachment{
 		Title:   "Question",
 		Pretext: fmt.Sprintf("We have a question for you. You can answer via `answer poll %s {insert response}`", poll.UUID),
 		Text:    poll.Question,
-		Fields: []AttachmentField{
-			AttachmentField{
-				Title: "Possible Answers:",
-				Value: poll.slackAnswerString(),
-				Short: false,
-			},
-		},
+		Fields:  attachments,
 	}
 }

@@ -15,6 +15,8 @@ func TestSlackPreviewAttachments(t *testing.T) {
 			// A perfect poll and attachment combo which expects all the fields
 			// and no trouble
 			Input: &Poll{
+				Kind:     "response",
+				UUID:     "1",
 				Question: "The pig is in the pudding",
 				Recipients: []Recipient{
 					Recipient{SlackID: "derp", SlackName: "oh ya"},
@@ -25,9 +27,15 @@ func TestSlackPreviewAttachments(t *testing.T) {
 					PossibleAnswer{Value: "2"},
 				},
 			}, Expected: Attachment{
+				Title:   "1",
 				Pretext: "Look good to you (yes/no)?",
 				Text:    "The pig is in the pudding",
 				Fields: []AttachmentField{
+					AttachmentField{
+						Title: "Poll Type:",
+						Value: "response",
+						Short: true,
+					},
 					AttachmentField{
 						Title: "Recipients:",
 						Value: "<@derp>, <@derp2>",
@@ -59,6 +67,10 @@ func TestSlackPreviewAttachments(t *testing.T) {
 			t.Error("Expected: ", output.Text, "got: ", result.Text)
 		}
 
+		if len(result.Fields) != len(output.Fields) {
+			t.Error("Mismatched number of attachment fields. Expected: ", len(output.Fields), " but got: ", len(result.Fields))
+		}
+
 		for k, v := range result.Fields {
 			expectedFieldValue := output.Fields[k].Value
 			if expectedFieldValue != v.Value {
@@ -75,6 +87,7 @@ func TestResponseSummaryField(t *testing.T) {
 		ExpectedAttachment string
 	}{
 		{
+			Poll:               Poll{Kind: "response", Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "derp"}}},
 			ExpectedAttachment: "100% - 1 out of 1",
 		},
 	}
