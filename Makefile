@@ -17,7 +17,7 @@ console:
 	docker run -it --entrypoint /bin/bash carlos-the-curious
 
 database-up:
-	docker run -d --name carlos-postgres --net=host -p 5432:5432 postgres
+	docker run -d --name carlos-postgres  --publish 5432:5432 postgres
 
 database-down:
 	docker stop carlos-postgres
