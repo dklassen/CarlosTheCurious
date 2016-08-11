@@ -41,35 +41,101 @@ func TestUserIDRegex(t *testing.T) {
 	}
 }
 
-func TestCreateResponsePoll(t *testing.T) {
-	robot := CleanSetup()
+func TestCreatePoll(t *testing.T) {
+	outgoing := []byte{}
 
 	GenerateUUID = func() string {
 		return "amazing"
 	}
 
-	outgoing := []byte{}
 	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
 		outgoing = append(outgoing, msg.Text...)
 		return nil
 	}
 
-	msg := Message{Channel: "testCreatePoll", User: "Creator", Text: "Incoming question"}
-	captureGroup := []string{"create response poll", "response"}
-	createPoll(&robot, &msg, captureGroup)
+	var testTable = []struct {
+		InputMessage    Message
+		InputCaptures   []string
+		ExpectedError   bool
+		ExpectedPoll    Poll
+		ExpectedMessage []byte
+	}{
+		// Generate response poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony", Channel: "coffee"},
+			InputCaptures:   []string{"", "response"},
+			ExpectedError:   false,
+			ExpectedMessage: []byte("Creating a response poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedPoll:    Poll{Stage: "initial", Kind: ResponsePoll},
+		},
+		// Generate feedback poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony2", Channel: "coffee3"},
+			InputCaptures:   []string{"", "feedback"},
+			ExpectedError:   false,
+			ExpectedMessage: []byte("Creating a feedback poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedPoll:    Poll{Stage: "initial", Kind: FeedbackPoll},
+		},
+		// Unable to generate poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony2", Channel: "coffee3"},
+			InputCaptures:   []string{"", "not a known type"},
+			ExpectedError:   true,
+			ExpectedMessage: []byte("Poll must be of type response or feedback cannot be not a known type"),
+			ExpectedPoll:    Poll{},
+		},
+	}
 
-	poll, err := FindFirstInactivePollByMessage(&msg)
+	for _, test := range testTable {
+		robot := CleanSetup()
+		outgoing = []byte("")
+
+		err := createPoll(&robot, &test.InputMessage, test.InputCaptures)
+		if err != nil && test.ExpectedError != true {
+			t.Fatal(err)
+		}
+
+		poll, err := FindFirstInactivePollByMessage(&test.InputMessage)
+		if err != nil && test.ExpectedError != true {
+			t.Fatal("Unable to find poll which was expected to be there")
+		}
+
+		expectedPoll := test.ExpectedPoll
+		if poll.Stage != expectedPoll.Stage {
+			t.Fatal("Expected stage to be:", expectedPoll.Stage, "but got:", poll.Stage)
+		}
+
+		if strings.Compare(poll.Kind, expectedPoll.Kind) != 0 {
+			t.Fatal("Expected poll to be of kind:", expectedPoll.Kind, "but got:", poll.Kind)
+		}
+
+		if bytes.Compare(outgoing, test.ExpectedMessage) != 0 {
+			t.Fatal("Expected response message: ", string(test.ExpectedMessage), " got: ", string(outgoing))
+		}
+
+	}
+}
+
+func TestCreatePollReturnsErrorWhenExistingPollIsBeingCreated(t *testing.T) {
+	robot := CleanSetup()
+	outgoing := []byte{}
+
+	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
+		outgoing = append(outgoing, msg.Text...)
+		return nil
+	}
+
+	testMsg := Message{Text: "bananas", User: "Balony2", Channel: "coffee3"}
+	testCaptures := []string{"", "feedback"}
+
+	err := createPoll(&robot, &testMsg, testCaptures)
 	if err != nil {
-		t.Fatal("Unable to find poll which was expected to be there")
+		t.Fatal("Was not expecting error to be thrown")
 	}
 
-	if poll.Stage != "initial" {
-		t.Fatal("Expected stage to be: intial but got:", poll.Stage)
-	}
-
-	expectedResponse := []byte("Creating a response poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?")
-	if bytes.Compare(outgoing, expectedResponse) != 0 {
-		t.Error("Expected response to be: ", string(expectedResponse), " got: ", string(outgoing))
+	err = createPoll(&robot, &testMsg, testCaptures)
+	if err != ErrExistingInactivePoll {
+		t.Fatal("Was expecting a poll to already exist")
 	}
 }
 
