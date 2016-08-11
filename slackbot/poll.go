@@ -1,6 +1,7 @@
 package slackbot
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/jinzhu/gorm"
@@ -9,6 +10,11 @@ import (
 const (
 	ResponsePoll = "response"
 	FeedbackPoll = "feedback"
+)
+
+var (
+	ErrExistingInactivePoll = errors.New("CarlosTheCurious: Existing poll is being created. Cancel or continue")
+	ErrInvalidPollType      = errors.New("CarlosTheCurious: Invalid poll type")
 )
 
 // Poll is the object we build up with questions we ask the user in Slack

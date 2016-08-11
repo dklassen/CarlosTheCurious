@@ -88,13 +88,13 @@ func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	existing, _ := FindFirstInactivePollByMessage(msg)
 	if existing.ID != 0 {
 		robot.SendMessage(msg.Channel, fmt.Sprintf("There is already a poll being created. Cancel the poll with: 'cancel poll %s'", existing.UUID))
-		return fmt.Errorf("Active poll already exists")
+		return ErrExistingInactivePoll
 	}
 
 	kind := captureGroups[1]
 	if strings.Compare(kind, ResponsePoll) != 0 && strings.Compare(kind, FeedbackPoll) != 0 {
 		robot.SendMessage(msg.Channel, fmt.Sprintf("Poll must be of type response or feedback cannot be %s", kind))
-		return fmt.Errorf("Incorrect poll type specified ", kind)
+		return ErrInvalidPollType
 	}
 
 	poll := NewPoll(kind, msg.User, msg.Channel)
