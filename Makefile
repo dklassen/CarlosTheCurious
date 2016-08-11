@@ -1,6 +1,12 @@
 build: $(DOCKER_CMD)
 	docker build -t carlos-the-curious .
 
+local-test: 
+	godep go test ./slackbot
+
+test:
+	docker run --rm  --net=host -w /go/src/github.com/dklassen/CarlosTheCurious  carlos-the-curious go test ./slackbot
+
 clean:
 	rm -rf $(DOCKER_BUILD)
 

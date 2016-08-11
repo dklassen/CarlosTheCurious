@@ -25,4 +25,4 @@ RUN godep go install -v
 
 EXPOSE 5432
 
-ENTRYPOINT $PROJECT/script/docker-entrypoint.sh
+CMD $PROJECT/script/docker-entrypoint.sh
