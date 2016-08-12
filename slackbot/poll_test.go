@@ -80,6 +80,28 @@ func TestSlackPreviewAttachments(t *testing.T) {
 	}
 }
 
+func TestAddAndGetSavedResponses(t *testing.T) {
+	SetupTestDatabase()
+
+	input := Poll{UUID: "responsetest"}
+	if err := input.Save(); err != nil {
+		t.Fatal("Did not expect there to be an issuing saving poll")
+	}
+
+	if err := input.AddResponse("bloop", "I am a valid response"); err != nil {
+		t.Fatal("Expected no issue saving response")
+	}
+	output, _ := input.GetResponses()
+	if len(output) != 1 {
+		t.Fatal("Was expecting 1 response")
+	}
+
+	result := output[0]
+	if strings.Compare(result.Value, "I am a valid response") != 0 {
+		t.Fatal("Expecting response: I am a valid response but got:", result.Value)
+	}
+}
+
 func TestResponseSummaryField(t *testing.T) {
 	SetupTestDatabase()
 	var testCases = []struct {
