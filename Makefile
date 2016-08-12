@@ -1,3 +1,5 @@
+deploy: build test
+
 build: $(DOCKER_CMD)
 	docker build -t carlos-the-curious .
 
