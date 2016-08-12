@@ -142,23 +142,53 @@ func TestCreatePollReturnsErrorWhenExistingPollIsBeingCreated(t *testing.T) {
 func TestGetQuestion(t *testing.T) {
 	robot := CleanSetup()
 
-	outgoing := []byte{}
+	responseMessage := []byte{}
 	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
-		outgoing = append(outgoing, msg.Text...)
+		responseMessage = append(responseMessage, msg.Text...)
 		return nil
 	}
 
-	poll := Poll{Kind: "response", Creator: "1", Channel: "a"}
+	var testTable = []struct {
+		InputMessage     Message
+		InputPoll        Poll
+		ExpectedPoll     Poll
+		ExpectedResponse []byte
+	}{
+		// Response poll should save the question and transition to getAnswers
+		{
+			InputMessage:     Message{Text: "aww yiss", User: "1", Channel: "a"},
+			InputPoll:        Poll{Kind: "response", Creator: "1", Channel: "a", UUID: "a"},
+			ExpectedPoll:     Poll{Kind: "response", Creator: "1", Channel: "a", Stage: "getAnswers"},
+			ExpectedResponse: []byte("What are the possible responses (comma separated)?"),
+		},
+		//	Feedback poll should save the question and transition to getRecipients
+		{
+			InputMessage:     Message{Text: "aww yiss", User: "1", Channel: "b"},
+			InputPoll:        Poll{Kind: FeedbackPoll, Creator: "1", Channel: "b", UUID: "b"},
+			ExpectedPoll:     Poll{Kind: FeedbackPoll, Creator: "1", Channel: "b", Stage: "getRecipients"},
+			ExpectedResponse: []byte("Who should we send this to?"),
+		},
+	}
+
 	msg := Message{Text: "Incoming question"}
 
-	getQuestion(&robot, &msg, &poll)
+	for _, test := range testTable {
+		responseMessage = []byte("")
 
-	if poll.Stage != "getAnswers" {
-		t.Error("Expected stage to be: getAnswers got:", poll.Stage)
-	}
-	expectedResponse := []byte("What are the possible responses (comma separated)?")
-	if bytes.Compare(outgoing, expectedResponse) != 0 {
-		t.Error("Expected response to be: ", string(expectedResponse), " got: ", string(outgoing))
+		getQuestion(&robot, &msg, &test.InputPoll)
+
+		exp := test.ExpectedPoll
+		output, err := FindFirstInactivePollByMessage(&test.InputMessage)
+		if err != nil {
+			t.Fatal("Was not expecting error", err)
+		}
+
+		if output.Stage != exp.Stage {
+			t.Fatal("Expected stage to be:", exp.Stage, "got:", output.Stage)
+		}
+		if bytes.Compare(responseMessage, test.ExpectedResponse) != 0 {
+			t.Fatal("Expected response to be: ", string(test.ExpectedResponse), " got: ", string(responseMessage))
+		}
 	}
 }
 

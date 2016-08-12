@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -168,6 +170,12 @@ func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
 		poll.Stage = "getAnswers"
 	} else {
 		poll.Stage = "getRecipients"
+		if err := GetDB().Save(poll).Error; err != nil {
+			logrus.Error(err)
+			return err
+		}
+		robot.SendMessage(msg.Channel, "Who should we send this to?")
+		return nil
 	}
 
 	if err := GetDB().Save(poll).Error; err != nil {
