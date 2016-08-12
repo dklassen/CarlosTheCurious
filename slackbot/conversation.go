@@ -148,8 +148,11 @@ func answerPoll(robot *Robot, msg *Message, captureGroups []string) error {
 		return err
 	}
 
-	answer := captureGroups[2]
-	GetDB().Model(poll).Association("Responses").Append(PollResponse{Value: answer, SlackID: msg.User})
+	if err := poll.AddResponse(msg.User, captureGroups[2]); err != nil {
+		logrus.Error(err)
+		robot.SendMessage(msg.Channel, "We were unable to add your response")
+		return nil
+	}
 
 	robot.SendMessage(msg.Channel, "Thanks for responding!")
 	return nil
