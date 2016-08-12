@@ -126,7 +126,7 @@ func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	}
 
 	poll := NewPoll(kind, msg.User, msg.Channel)
-	if err := GetDB().Save(poll).Error; err != nil {
+	if err := poll.Save(); err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			robot.SendMessage(msg.Channel, "Sigh at the moment we need uniquely named polls. Sorry")
 		} else {
