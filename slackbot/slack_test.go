@@ -75,41 +75,6 @@ func CleanSetup() Robot {
 	return robot
 }
 
-func TestCreatePoll(t *testing.T) {
-	robot := CleanSetup()
-	msg := Message{User: "user", Channel: "channel"}
-	captureGroups := []string{"nothing", "poll-name"}
-
-	outgoing := []byte{}
-	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
-		outgoing = append(outgoing, msg.Text...)
-		return nil
-	}
-
-	GenerateUUID = func() string {
-		return "amazing"
-	}
-
-	err := createPoll(&robot, &msg, captureGroups)
-	if err != nil {
-		t.Error(err)
-		t.FailNow()
-	}
-
-	poll := &Poll{}
-	GetDB().Where("creator = ? AND channel = ? AND stage != ?", msg.User, msg.Channel, "active").First(&poll)
-
-	if poll.Creator != "user" {
-		t.Error("Got unexpected poll creator: ", poll.Creator, "expected: user")
-	}
-
-	expected := []byte("Creating poll poll-name. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?")
-
-	if bytes.Compare(outgoing, expected) != 0 {
-		t.Error("Expected output messages were not seen got: ", string(outgoing), " instead of: ", string(expected))
-	}
-}
-
 func testDispatch(t *testing.T) {
 	robot := CleanSetup()
 	robot.Handler = testHandler
@@ -196,12 +161,12 @@ func TestCommandProcessMessageStripsDirectMentionAndModifiesMessage(t *testing.T
 	}
 }
 
-func TestConversationFlow(t *testing.T) {
+func TestConversationFlowForResponsePoll(t *testing.T) {
 	robot := CleanSetup()
 	testMessage := Message{
 		User:          "bloop",
 		Channel:       "blarg",
-		Text:          "create poll test-poll",
+		Text:          "",
 		DirectMention: true,
 	}
 
@@ -210,9 +175,11 @@ func TestConversationFlow(t *testing.T) {
 		outgoing = append(outgoing, msg.Text...)
 		return nil
 	}
+
 	GenerateUUID = func() string {
 		return "blah"
 	}
+
 	var testMessages = []struct {
 		ExpectedStage  string
 		ExpectedText   []byte
@@ -220,13 +187,14 @@ func TestConversationFlow(t *testing.T) {
 		UsePostMessage bool
 	}{
 		{
+			// Stage 1: Initial message that is sent by the user
 			ExpectedStage: "",
 			ExpectedText:  []byte(""),
-			NextMsg:       "create poll test-poll",
+			NextMsg:       "create response poll",
 		},
 		{
 			ExpectedStage: "initial",
-			ExpectedText:  []byte("Creating poll test-poll. You can cancel the poll any time with `cancel poll blah`What was the question you wanted to ask?"),
+			ExpectedText:  []byte("Creating a response poll. You can cancel the poll any time with `cancel poll blah`What was the question you wanted to ask?"),
 			NextMsg:       "Here is your question",
 		},
 		{
@@ -248,15 +216,13 @@ func TestConversationFlow(t *testing.T) {
 	}
 
 	for _, testStage := range testMessages {
-		poll := Poll{}
-		GetDB().Where("creator = ? AND channel = ? AND stage != ?", testMessage.User, testMessage.Channel, "active").First(&poll)
-
+		poll, _ := FindFirstInactivePollByMessage(&testMessage)
 		if poll.Stage != testStage.ExpectedStage {
-			t.Error("Expected stage: ", testStage.ExpectedStage, "got: ", poll.Stage)
+			t.Fatal("Expected stage:", testStage.ExpectedStage, "got:", poll.Stage)
 		}
 
 		if bytes.Compare(outgoing, testStage.ExpectedText) != 0 {
-			t.Error("Expected output messages: ", string(testStage.ExpectedText), "got: ", string(outgoing))
+			t.Fatal("Expected output messages: ", string(testStage.ExpectedText), "got: ", string(outgoing))
 		}
 
 		outgoing = []byte("")

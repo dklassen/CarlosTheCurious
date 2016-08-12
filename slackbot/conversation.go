@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/Sirupsen/logrus"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 
 	registeredCommands = map[string]HandlerFunc{
 		"^show poll (.*)$":                     showPoll,
-		"^create poll (.*)$":                   createPoll,
+		"^create ([a-zA-Z]+) poll$":            createPoll,
 		"^cancel poll ([a-zA-Z-0-9-_]+)$":      cancelPoll,
 		"^answer poll ([a-zA-Z-0-9-_]+) (.*$)": answerPoll,
 		"^list active polls$":                  activePolls,
@@ -42,9 +44,9 @@ Carlos the Curious at your service! Create and gather feedback to simple survey 
 
 *Commands*
 
-*'create poll {poll_name}'* - begin the process of creating a poll. Carlos will
+*'create {feedback|response} poll'* - begin the process of creating a poll. Carlos will
 ask you follow up questions to build the survey don't worry you can cancel at
-any time.
+any time. If you choose _feedback_ the answer can be freeform, if _response_ the answers show be one of the supplied responses.
 
 *'cancel poll {poll_uuid}'* - Cancel a currently active or inprogress poll.
 
@@ -85,25 +87,29 @@ func activePolls(robot *Robot, msg *Message, captures []string) (err error) {
 }
 
 func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
-	existing := FindFirstInactivePollByMessage(msg)
-	if existing == nil {
+	existing, _ := FindFirstInactivePollByMessage(msg)
+	if existing.ID != 0 {
 		robot.SendMessage(msg.Channel, fmt.Sprintf("There is already a poll being created. Cancel the poll with: 'cancel poll %s'", existing.UUID))
-		return fmt.Errorf("Active poll already exists")
+		return ErrExistingInactivePoll
 	}
 
-	pollName := captureGroups[1]
-	poll := NewPoll(pollName, msg.User, msg.Channel)
+	kind := captureGroups[1]
+	if strings.Compare(kind, ResponsePoll) != 0 && strings.Compare(kind, FeedbackPoll) != 0 {
+		robot.SendMessage(msg.Channel, fmt.Sprintf("Poll must be of type response or feedback cannot be %s", kind))
+		return ErrInvalidPollType
+	}
 
+	poll := NewPoll(kind, msg.User, msg.Channel)
 	if err := GetDB().Save(poll).Error; err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			robot.SendMessage(msg.Channel, "Sigh at the moment we need uniquely named polls. Sorry")
 		} else {
-			robot.SendMessage(msg.Channel, "Something has gone wrong. We are looking into it")
+			robot.SendMessage(msg.Channel, "Something has gone wrong. We are looking into it.")
 		}
 		return err
 	}
 
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Creating poll %s. You can cancel the poll any time with `cancel poll %s`", pollName, poll.UUID))
+	robot.SendMessage(msg.Channel, fmt.Sprintf("Creating a %s poll. You can cancel the poll any time with `cancel poll %s`", kind, poll.UUID))
 	robot.SendMessage(msg.Channel, "What was the question you wanted to ask?")
 	return nil
 }
@@ -160,7 +166,18 @@ func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
 
 func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
 	poll.Question = msg.Text
-	poll.Stage = "getAnswers"
+	if strings.Compare(poll.Kind, ResponsePoll) == 0 {
+		poll.Stage = "getAnswers"
+	} else {
+		poll.Stage = "getRecipients"
+		if err := GetDB().Save(poll).Error; err != nil {
+			logrus.Error(err)
+			return err
+		}
+		robot.SendMessage(msg.Channel, "Who should we send this to?")
+		return nil
+	}
+
 	if err := GetDB().Save(poll).Error; err != nil {
 		return err
 	}

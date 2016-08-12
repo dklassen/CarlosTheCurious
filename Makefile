@@ -1,3 +1,5 @@
+deploy: build test
+
 build: $(DOCKER_CMD)
 	docker build -t carlos-the-curious .
 
@@ -17,10 +19,13 @@ console:
 	docker run -it --entrypoint /bin/bash carlos-the-curious
 
 database-up:
-	docker run -d --name carlos-postgres --net=host -p 5432:5432 postgres
+	docker run -d --name carlos-postgres  --publish 5432:5432 postgres
 
-database-down:
+database-down: database-stop database-clean
+
+database-stop:
 	docker stop carlos-postgres
+
 
 database-build:
 	docker build --tag carlos/postgres --file Dockerfile.devdb .

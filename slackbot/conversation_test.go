@@ -41,25 +41,154 @@ func TestUserIDRegex(t *testing.T) {
 	}
 }
 
-func TestGetQuestion(t *testing.T) {
-	robot := CleanSetup()
-
+func TestCreatePoll(t *testing.T) {
 	outgoing := []byte{}
+
+	GenerateUUID = func() string {
+		return "amazing"
+	}
+
 	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
 		outgoing = append(outgoing, msg.Text...)
 		return nil
 	}
 
-	poll := Poll{Creator: "1", Channel: "a"}
-	msg := Message{Text: "Incoming question"}
-	getQuestion(&robot, &msg, &poll)
-
-	if poll.Stage != "getAnswers" {
-		t.Error("Expected stage to be: getAnswers got:", poll.Stage)
+	var testTable = []struct {
+		InputMessage    Message
+		InputCaptures   []string
+		ExpectedError   bool
+		ExpectedPoll    Poll
+		ExpectedMessage []byte
+	}{
+		// Generate response poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony", Channel: "coffee"},
+			InputCaptures:   []string{"", "response"},
+			ExpectedError:   false,
+			ExpectedMessage: []byte("Creating a response poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedPoll:    Poll{Stage: "initial", Kind: ResponsePoll},
+		},
+		// Generate feedback poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony2", Channel: "coffee3"},
+			InputCaptures:   []string{"", "feedback"},
+			ExpectedError:   false,
+			ExpectedMessage: []byte("Creating a feedback poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedPoll:    Poll{Stage: "initial", Kind: FeedbackPoll},
+		},
+		// Unable to generate poll
+		{
+			InputMessage:    Message{Text: "bananas", User: "Balony2", Channel: "coffee3"},
+			InputCaptures:   []string{"", "not a known type"},
+			ExpectedError:   true,
+			ExpectedMessage: []byte("Poll must be of type response or feedback cannot be not a known type"),
+			ExpectedPoll:    Poll{},
+		},
 	}
-	expectedResponse := []byte("What are the possible responses (comma separated)?")
-	if bytes.Compare(outgoing, expectedResponse) != 0 {
-		t.Error("Expected response to be: ", string(expectedResponse), " got: ", string(outgoing))
+
+	for _, test := range testTable {
+		robot := CleanSetup()
+		outgoing = []byte("")
+
+		err := createPoll(&robot, &test.InputMessage, test.InputCaptures)
+		if err != nil && test.ExpectedError != true {
+			t.Fatal(err)
+		}
+
+		poll, err := FindFirstInactivePollByMessage(&test.InputMessage)
+		if err != nil && test.ExpectedError != true {
+			t.Fatal("Unable to find poll which was expected to be there")
+		}
+
+		expectedPoll := test.ExpectedPoll
+		if poll.Stage != expectedPoll.Stage {
+			t.Fatal("Expected stage to be:", expectedPoll.Stage, "but got:", poll.Stage)
+		}
+
+		if strings.Compare(poll.Kind, expectedPoll.Kind) != 0 {
+			t.Fatal("Expected poll to be of kind:", expectedPoll.Kind, "but got:", poll.Kind)
+		}
+
+		if bytes.Compare(outgoing, test.ExpectedMessage) != 0 {
+			t.Fatal("Expected response message: ", string(test.ExpectedMessage), " got: ", string(outgoing))
+		}
+
+	}
+}
+
+func TestCreatePollReturnsErrorWhenExistingPollIsBeingCreated(t *testing.T) {
+	robot := CleanSetup()
+	outgoing := []byte{}
+
+	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
+		outgoing = append(outgoing, msg.Text...)
+		return nil
+	}
+
+	testMsg := Message{Text: "bananas", User: "Balony2", Channel: "coffee3"}
+	testCaptures := []string{"", "feedback"}
+
+	err := createPoll(&robot, &testMsg, testCaptures)
+	if err != nil {
+		t.Fatal("Was not expecting error to be thrown")
+	}
+
+	err = createPoll(&robot, &testMsg, testCaptures)
+	if err != ErrExistingInactivePoll {
+		t.Fatal("Was expecting a poll to already exist")
+	}
+}
+
+func TestGetQuestion(t *testing.T) {
+	robot := CleanSetup()
+
+	responseMessage := []byte{}
+	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
+		responseMessage = append(responseMessage, msg.Text...)
+		return nil
+	}
+
+	var testTable = []struct {
+		InputMessage     Message
+		InputPoll        Poll
+		ExpectedPoll     Poll
+		ExpectedResponse []byte
+	}{
+		// Response poll should save the question and transition to getAnswers
+		{
+			InputMessage:     Message{Text: "aww yiss", User: "1", Channel: "a"},
+			InputPoll:        Poll{Kind: "response", Creator: "1", Channel: "a", UUID: "a"},
+			ExpectedPoll:     Poll{Kind: "response", Creator: "1", Channel: "a", Stage: "getAnswers"},
+			ExpectedResponse: []byte("What are the possible responses (comma separated)?"),
+		},
+		//	Feedback poll should save the question and transition to getRecipients
+		{
+			InputMessage:     Message{Text: "aww yiss", User: "1", Channel: "b"},
+			InputPoll:        Poll{Kind: FeedbackPoll, Creator: "1", Channel: "b", UUID: "b"},
+			ExpectedPoll:     Poll{Kind: FeedbackPoll, Creator: "1", Channel: "b", Stage: "getRecipients"},
+			ExpectedResponse: []byte("Who should we send this to?"),
+		},
+	}
+
+	msg := Message{Text: "Incoming question"}
+
+	for _, test := range testTable {
+		responseMessage = []byte("")
+
+		getQuestion(&robot, &msg, &test.InputPoll)
+
+		exp := test.ExpectedPoll
+		output, err := FindFirstInactivePollByMessage(&test.InputMessage)
+		if err != nil {
+			t.Fatal("Was not expecting error", err)
+		}
+
+		if output.Stage != exp.Stage {
+			t.Fatal("Expected stage to be:", exp.Stage, "got:", output.Stage)
+		}
+		if bytes.Compare(responseMessage, test.ExpectedResponse) != 0 {
+			t.Fatal("Expected response to be: ", string(test.ExpectedResponse), " got: ", string(responseMessage))
+		}
 	}
 }
 
@@ -78,17 +207,17 @@ func TestGetRecipients(t *testing.T) {
 		ExpectedResponsesCount int
 	}{
 		{
-			TestPoll:               Poll{Name: "test1", UUID: "1"},
+			TestPoll:               Poll{Kind: "response", UUID: "1"},
 			RecipientsMsg:          "<@U1231231>",
 			ExpectedResponsesCount: 1,
 		},
 		{
-			TestPoll:               Poll{Name: "test2", UUID: "2"},
+			TestPoll:               Poll{Kind: "response", UUID: "2"},
 			RecipientsMsg:          "<@U1231231>, <@U1231256>",
 			ExpectedResponsesCount: 2,
 		},
 		{
-			TestPoll:               Poll{Name: "test3", UUID: "3"},
+			TestPoll:               Poll{Kind: "response", UUID: "3"},
 			RecipientsMsg:          "here are the recipients: <@U1231231>, <@U1231256>",
 			ExpectedResponsesCount: 2,
 		},
@@ -126,7 +255,7 @@ func TestSendPoll(t *testing.T) {
 	}{
 		// Test we don't send the poll unless we send yes
 		{
-			InputPoll:           Poll{Name: "test1", UUID: "1", Creator: "derp", Channel: "dorp"},
+			InputPoll:           Poll{Kind: "response", UUID: "1", Creator: "derp", Channel: "dorp"},
 			InputMessage:        Message{Text: "no", User: "derp", Channel: "dorp"},
 			ExpectedMessage:     []byte("Okay not going to send poll. You can cancel with `cancel poll 1`"),
 			ExpectedPostMessage: "",
@@ -136,7 +265,7 @@ func TestSendPoll(t *testing.T) {
 		// Test when reply with yes we transition poll to active and send message
 		// no recipients so no requests
 		{
-			InputPoll:           Poll{Name: "test2", UUID: "2", Creator: "derp", Channel: "dorp"},
+			InputPoll:           Poll{Kind: "response", UUID: "2", Creator: "derp", Channel: "dorp"},
 			InputMessage:        Message{Text: "yes", User: "derp", Channel: "dorp"},
 			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `show poll 2`"),
 			ExpectedPostMessage: "",
@@ -146,7 +275,7 @@ func TestSendPoll(t *testing.T) {
 		{
 			// Test poll has a single recipient and should progress to the active state and try posting one message to
 			// the recipient
-			InputPoll:           Poll{Name: "test3", UUID: "3", Creator: "derp", Channel: "dorp", Recipients: []Recipient{Recipient{SlackID: "Ben", SlackName: "Oro"}}},
+			InputPoll:           Poll{Kind: "response", UUID: "3", Creator: "derp", Channel: "dorp", Recipients: []Recipient{Recipient{SlackID: "Ben", SlackName: "Oro"}}},
 			InputMessage:        Message{Text: "yes", User: "derp", Channel: "dorp"},
 			ExpectedMessage:     []byte("Poll is live you can check in by asking me to `show poll 3`"),
 			ExpectedPostMessage: "",
@@ -193,13 +322,13 @@ func TestCancelPoll(t *testing.T) {
 		ExpectDeleted    bool
 	}{
 		{
-			TargetPoll:       Poll{Name: "blastoff", UUID: "1"},
+			TargetPoll:       Poll{Kind: "response", UUID: "1"},
 			ExpectedResponse: []byte("Okay, cancelling the poll for you"),
 			ExpectDeleted:    true,
 			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll 1", DirectMention: true},
 		},
 		{
-			TargetPoll:       Poll{Name: "not_going_to_find_me", UUID: "not_going_to_find"},
+			TargetPoll:       Poll{Kind: "response", UUID: "not_going_to_find"},
 			ExpectedResponse: []byte("Oops, couldn't find the poll for you"),
 			ExpectDeleted:    false,
 			TargetMessage:    Message{User: "blarg", Channel: "Wootzone", Text: "cancel poll 2", DirectMention: true},
@@ -245,7 +374,7 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 	}{
 		// Perfect case where the responder is able to save the response to the recipient
 		{
-			InputPoll:            Poll{Name: "test-1", UUID: "1", Channel: "dorp", Creator: "Merv", Stage: "active", Recipients: []Recipient{{SlackID: "1234"}}},
+			InputPoll:            Poll{Kind: "response", UUID: "1", Channel: "dorp", Creator: "Merv", Stage: "active", Recipients: []Recipient{{SlackID: "1234"}}},
 			InputMsg:             Message{User: "1234", Channel: "Private_Channel"},
 			InputCaptures:        []string{"everything", "1", "Why do we not get ice cream on thursdays?"},
 			ExpectedSuccess:      true,
@@ -254,7 +383,7 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 		},
 		// Poll is not in the active stage so not ready to answer and will fail
 		{
-			InputPoll:            Poll{Name: "test-2", UUID: "2", Channel: "dorp", Creator: "Merv", Stage: "sendPoll", Recipients: []Recipient{{SlackID: "1234"}}},
+			InputPoll:            Poll{Kind: "response", UUID: "2", Channel: "dorp", Creator: "Merv", Stage: "sendPoll", Recipients: []Recipient{{SlackID: "1234"}}},
 			InputMsg:             Message{User: "1234", Channel: "Private_Channel"},
 			InputCaptures:        []string{"everything", "test-2", "Why do we not get ice cream on thursdays?"},
 			ExpectedSuccess:      false,
@@ -268,7 +397,7 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 		GetDB().Save(&testCase.InputPoll)
 
 		answerPoll(&robot, &testCase.InputMsg, testCase.InputCaptures)
-		savedPoll, _ := FindFirstActivePollByName(testCase.InputPoll.Name)
+		savedPoll, _ := FindFirstActivePollByUUID(testCase.InputPoll.UUID)
 		resultResponse := &PollResponse{}
 		GetDB().Where("poll_id = ? AND slack_id =?", savedPoll.ID, testCase.InputMsg.User).First(resultResponse)
 
