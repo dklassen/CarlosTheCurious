@@ -27,14 +27,12 @@ type responseRTMSelf struct {
 	Name string `json:"name"`
 }
 
-// ChannelList is a list of channels from slack
 type ChannelList struct {
 	Ok       bool      `json:"ok"`
 	Channels []Channel `json:"channels"`
 	Error    string    `json:"error,omitempty"`
 }
 
-// Channel is a Slack channel description
 type Channel struct {
 	ID        string   `json:"id"`
 	Name      string   `json:"name"`
@@ -42,21 +40,17 @@ type Channel struct {
 	Members   []string `json:"members"`
 }
 
-//UserList  slack returned json object
 type UserList struct {
 	Ok      bool   `json:"ok"`
 	Members []User `json:"members"`
 	Error   string `json:"error,omitempty"`
 }
 
-// User is a Slack user entry
 type User struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
-// ResponseRTMStart is the response object we get back from slack on the first
-// initialization call to the api
 type ResponseRTMStart struct {
 	Ok    bool             `json:"ok"`
 	Error string           `json:"error"`
@@ -64,46 +58,32 @@ type ResponseRTMStart struct {
 	Self  *responseRTMSelf `json:"self"`
 }
 
-// HandlerFunc is a registered function that when matched is passed the message
-// to be processed .
 type HandlerFunc func(*Robot, *Message, []string) error
 
-// Stage is a stage in the polling conversation
 type Stage func(*Robot, *Message, *Poll) error
 
-// MessageHandler is a Slack msssage multiplexer.
-// It matches the message of incoming messages to registered
-// commands based on first match to a regex
 type MessageHandler struct {
 	Handlers map[string]Handler
 	Matcher  func(handlers map[string]Handler, msg *Message) (cmd *Handler, result []string)
 }
 
-// Handler holds the pattern and associated commands to call for a given mesage
-// if a Handler has a defined next stage it becomes part of a dialog
 type Handler struct {
 	pattern     *regexp.Regexp
 	handlerFunc HandlerFunc
 }
 
-// WebClienter interface will allow us to mock out http.Client
-// during testing. This should be http.Client
 type WebClienter interface {
 	Do(req *http.Request) (resp *http.Response, err error)
 }
 
-// SlackWebClient struct holds the client for sending http requests
 type SlackWebClient struct {
 	HTTPClient *http.Client
 }
 
-// Do does what it is supposed to do
 func (client *SlackWebClient) Do(req *http.Request) (resp *http.Response, err error) {
 	return client.HTTPClient.Do(req)
 }
 
-// Robot is the primary abstraction we deal with for handling messge sending/recieving
-// with the Slack API
 type Robot struct {
 	ID         string
 	Name       string
@@ -119,7 +99,6 @@ type Robot struct {
 	ListenChan chan Message
 }
 
-// Message holds json object we transmit/recieve via Slack api
 type Message struct {
 	ID            uint64   `json:"id"`
 	Type          string   `json:"type"`
@@ -133,7 +112,6 @@ type Message struct {
 	CaptureGroup  []string `json:"-"` // hold the capture group when a command is matched
 }
 
-// Attachment holds information for the slack PostMessage attachement field
 type Attachment struct {
 	Title   string            `json:"title"`
 	Text    string            `json:"text"`
@@ -141,14 +119,12 @@ type Attachment struct {
 	Fields  []AttachmentField `json:"fields"`
 }
 
-// AttachmentField is a subfield of the slack PostMessage attachement field
 type AttachmentField struct {
 	Title string `json:"title"`
 	Value string `json:"value"`
 	Short bool   `json:"short"`
 }
 
-// PostResponse is a response message from the SlackApi PostMessage upon posting a message
 type PostResponse struct {
 	Ok      bool   `json:"ok"`
 	TS      string `json:"ts"`
@@ -220,7 +196,6 @@ func (msg Message) isPrivate() bool {
 	return false
 }
 
-// Find a message command which matches the command regex
 func (msgHandler MessageHandler) match(msg *Message) (*Handler, []string) {
 	return msgHandler.Matcher(msgHandler.Handlers, msg)
 }
@@ -241,7 +216,6 @@ var defaultMessageHandler = &MessageHandler{
 	Matcher:  basicMatch,
 }
 
-// NewRobot create a new robot for us to play with
 func NewRobot(origin, token string) *Robot {
 	return &Robot{
 		Origin:     origin,
@@ -253,8 +227,6 @@ func NewRobot(origin, token string) *Robot {
 	}
 }
 
-// SlackConnect main entry point to setup a websocket we can communicate with the
-// Slack API over
 func (robot *Robot) SlackConnect() {
 	slackResponse, err := slackStart(robot.APIToken)
 	if err != nil {
@@ -276,14 +248,10 @@ func (robot *Robot) SlackConnect() {
 	}).Info("Connected to Slack!")
 }
 
-// TODO:: Remove these but still allow for dependency injection in tests
-// Do so by mocking out the websocket instead
 var receiveOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
 	return websocket.JSON.Receive(conn, msg)
 }
 
-// TODO:: Remove these but still allow for dependency injection in tests
-// Do so by mocking out the websocket instead
 var sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
 	return websocket.JSON.Send(conn, msg)
 }
@@ -305,8 +273,6 @@ func sendViaRPC(client WebClienter, token, channel, text string, attachments []A
 	return client.Do(req)
 }
 
-// Listen fires of a go routine which listens to messages recieved from the
-// Websocket and adds the to the channel
 func (robot *Robot) Listen() {
 	go func() {
 		for {
@@ -322,7 +288,6 @@ func (robot *Robot) Listen() {
 	return
 }
 
-// SendMessage to a message on slack
 func (robot Robot) SendMessage(channel, msg string) (err error) {
 	message := &Message{
 		ID:      atomic.AddUint64(&counter, 1),
@@ -333,8 +298,6 @@ func (robot Robot) SendMessage(channel, msg string) (err error) {
 	return sendOverWebsocket(robot.Connection, message)
 }
 
-// PostMessage uses the slack API over the RTM api to allow rich messages to be
-// created
 func (robot Robot) PostMessage(channel, msg string, attachment Attachment) {
 	attachments := []Attachment{attachment}
 	resp, err := sendViaRPC(robot.Client, robot.APIToken, channel, msg, attachments)
@@ -357,8 +320,6 @@ func (robot Robot) PostMessage(channel, msg string, attachment Attachment) {
 	}
 }
 
-// RegisterCommands a command to check against incoming messages and the function
-// to be triggered
 func (robot Robot) RegisterCommands(cmds map[string]HandlerFunc) {
 	for pattern, handler := range cmds {
 		robot.Handler.registerCommand(pattern, handler)
@@ -396,8 +357,6 @@ func (robot Robot) continueConversation(msg *Message) {
 
 }
 
-// Dispatch parses the incoming message and dispatches to the best matched
-// command
 func (robot *Robot) Dispatch(msg *Message) {
 	if msg.DirectMention == true || msg.isPrivate() == true {
 		cmd, captureGroups := robot.match(msg)
@@ -418,8 +377,6 @@ func (robot *Robot) Dispatch(msg *Message) {
 	}
 }
 
-// ProcessMessage finds the approciate handler to start a conversation
-// on building or resonding to a poll
 func (robot Robot) ProcessMessage(msg *Message) {
 	if msg.isMessage() != true {
 		return
@@ -436,15 +393,10 @@ func (robot Robot) ProcessMessage(msg *Message) {
 	}
 }
 
-// SlackIDString returns the slack formated string containing the robots identifier
 func (robot *Robot) SlackIDString() string {
 	return "<@" + robot.ID + ">"
 }
 
-// DownloadUsersMap retrieves the list of users and channels that are available
-// we need this information for when recipients are listed to go and retrive
-// names etc. We store in memory but should move to a cache later one.
-// This should be refreshed periodically
 func (robot *Robot) DownloadUsersMap() {
 	logrus.Info("Downloading channel listings")
 	channelList, _ := downloadChannelList(robot.APIToken)
@@ -463,8 +415,6 @@ func (robot *Robot) DownloadUsersMap() {
 	robot.Users = users.Members
 }
 
-// HerokuServer is a small routine which spins up a server on the port
-// Heroku gives us and listens on
 func HerokuServer() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -483,7 +433,6 @@ func HerokuServer() {
 	}
 }
 
-// HerokuPing hits the heroku endpoint every 5 min to keep process awake
 func HerokuPing() {
 	pingInterval := time.NewTicker(time.Duration(5) * time.Minute)
 	for {
@@ -495,8 +444,6 @@ func HerokuPing() {
 	}
 }
 
-// Run is the entry point for Carlos to setup a connection with Slack and
-// the channels we use for listening and posting messages
 func (robot Robot) Run() {
 	if os.Getenv("PLATFORM") == "HEROKU" {
 		go HerokuServer()

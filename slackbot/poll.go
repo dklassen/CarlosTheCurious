@@ -17,7 +17,6 @@ var (
 	ErrInvalidPollType      = errors.New("CarlosTheCurious: Invalid poll type")
 )
 
-// Poll is the object we build up with questions we ask the user in Slack
 type Poll struct {
 	gorm.Model
 	UUID            string `gorm:"not null;unique"`
@@ -31,14 +30,12 @@ type Poll struct {
 	PossibleAnswers []PossibleAnswer
 }
 
-// PossibleAnswer holds the value of a possible answer
 type PossibleAnswer struct {
 	gorm.Model
 	PollID uint
 	Value  string
 }
 
-// PollResponse holds the answer to the question
 type PollResponse struct {
 	gorm.Model
 	PollID  uint
@@ -46,7 +43,6 @@ type PollResponse struct {
 	Value   string
 }
 
-// Recipient is the target of a particular poll
 type Recipient struct {
 	gorm.Model
 	SlackID   string
@@ -124,14 +120,12 @@ func FindFirstInactivePollByMessage(msg *Message) (*Poll, error) {
 	return poll, nil
 }
 
-// FindRecipientByID finds the recipient based on the poll and slack user id
 func FindRecipientByID(pollID uint, slackID string) Recipient {
 	recipient := Recipient{}
 	GetDB().Where("poll_id = ? AND slack_id = ?", pollID, slackID).First(&recipient)
 	return recipient
 }
 
-// SlackIDString format the user id to a form that will be parsed by Slack to display the users name
 func (r *Recipient) SlackIDString() string {
 	return "<@" + r.SlackID + ">"
 }
@@ -203,8 +197,6 @@ func pollTypeField(poll *Poll) AttachmentField {
 	}
 }
 
-// SlackPollSummary builds an attachment for the PostMessage api that shows a summary
-// of the current statistics for a running or completed poll.
 func (poll *Poll) SlackPollSummary() Attachment {
 	return Attachment{
 		Title:   poll.UUID,
@@ -218,8 +210,6 @@ func (poll *Poll) SlackPollSummary() Attachment {
 	}
 }
 
-// SlackPreviewAttachment generates an object which is translated to json
-// and sent as part of the attachments field in the PostMessage api call
 func (poll *Poll) SlackPreviewAttachment() Attachment {
 	attachments := []AttachmentField{}
 
@@ -238,7 +228,6 @@ func (poll *Poll) SlackPreviewAttachment() Attachment {
 	}
 }
 
-// SlackRecipientAttachment is the attachment that gets sent to the recipient
 func (poll *Poll) SlackRecipientAttachment() Attachment {
 	attachments := []AttachmentField{}
 
