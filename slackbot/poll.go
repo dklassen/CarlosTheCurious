@@ -233,7 +233,7 @@ func (poll *Poll) SlackRecipientAttachment() Attachment {
 
 	attachments = append(attachments, pollTypeField(poll))
 
-	if poll.Kind == "response" {
+	if poll.Kind == ResponsePoll {
 		attachments = append(attachments, possibleAnswerField(poll))
 	}
 
