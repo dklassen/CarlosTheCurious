@@ -7,10 +7,10 @@ This is still a work in progress but the conversation flow goes like this. Open 
 
 ```
 dana [10:39 PM]  
-create poll wunderbar
+create response poll 
 
 carlos_the_curiousBOT [10:39 PM]  
-Creating poll wunderbar. You can cancel the poll any time with `cancel poll 437c67df-febb-4350-b561-92296ea97f6a`
+Creating response poll. You can cancel the poll any time with `cancel poll 437c67df-febb-4350-b561-92296ea97f6a`
 
 [10:39]  
 What was the question you wanted to ask?
