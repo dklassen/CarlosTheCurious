@@ -13,8 +13,8 @@ const (
 )
 
 var (
-	ErrExistingInactivePoll = errors.New("CarlosTheCurious: Existing poll is being created. Cancel or continue")
-	ErrInvalidPollType      = errors.New("CarlosTheCurious: Invalid poll type")
+	ErrExistingInactivePoll = errors.New("CarlosTheCurious: Unable to create poll due to partially created existing poll")
+	ErrInvalidPollType      = errors.New("CarlosTheCurious: Invalid poll type must be of response or feedback")
 )
 
 type Poll struct {
