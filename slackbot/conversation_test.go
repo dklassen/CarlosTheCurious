@@ -8,35 +8,86 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-func TestUserIDRegex(t *testing.T) {
-	var testTable = []struct {
-		TestMsg    string
-		ExpectedID string
+func TestParseRecipientsText(t *testing.T) {
+	robot := CleanSetup()
+
+	var tests = []struct {
+		Input         Message
+		InputChannels map[string]Channel
+		Expected      []Recipient
 	}{
 		{
-			TestMsg:    "<@U12341>",
-			ExpectedID: "U12341",
+			// identify a single user id
+			Input:    Message{Text: "<@UDF123>"},
+			Expected: []Recipient{{SlackID: "UDF123"}},
 		},
 		{
-			TestMsg:    "<@U12341",
-			ExpectedID: "",
+			// Identify two user ids
+			Input:    Message{Text: "<@UDF123> and <@USDF>"},
+			Expected: []Recipient{{SlackID: "UDF123"}, {SlackID: "USDF"}},
 		},
 		{
-			TestMsg:    "<U12341>",
-			ExpectedID: "",
+			// Identify a single user and a channel with multiple users
+			Input: Message{Text: "<@UDF123> and <@CUSDF12>"},
+			InputChannels: map[string]Channel{
+				"CUSDF12": Channel{Members: []string{"derp1", "derp2"}},
+			},
+			Expected: []Recipient{
+				{SlackID: "UDF123"},
+				{SlackID: "derp1"},
+				{SlackID: "derp2"},
+			},
 		},
 	}
-	for _, testCase := range testTable {
-		output := userIDRegex.FindStringSubmatch(testCase.TestMsg)
 
-		// NOTE: Derp no matches think of something
-		if len(output) < 1 {
-			output = []string{"", ""}
+	for _, test := range tests {
+		robot.Channels = test.InputChannels
+		result := parseRecpientsText(&robot, test.Input)
+		if len(result) != len(test.Expected) {
+			t.Fatal("Expected:", len(test.Expected), "recipients got:", len(result))
 		}
 
-		result := output[1]
-		if strings.Compare(result, testCase.ExpectedID) != 0 {
-			t.Error("Expected ID: ", testCase.ExpectedID, "got: ", result)
+		for k, v := range test.Expected {
+			if strings.Compare(v.SlackID, result[k].SlackID) != 0 {
+				t.Fatal("Failed to parse recipient Id. Expected:", v.SlackID, "got:", result[k].SlackID)
+			}
+		}
+	}
+}
+
+func TestSlackIDRegex(t *testing.T) {
+	var testTable = []struct {
+		TestMsg  string
+		Expected []string
+	}{
+		{
+			TestMsg:  "<@U12341>",
+			Expected: []string{"<@U12341>", "U12341"},
+		},
+		{
+			TestMsg:  "<@U12341",
+			Expected: []string{},
+		},
+		{
+			TestMsg:  "<U12341>",
+			Expected: []string{},
+		}, {
+			TestMsg:  "<#C1U41SHTK>",
+			Expected: []string{"<#C1U41SHTK>", "C1U41SHTK"},
+		},
+	}
+
+	for _, testCase := range testTable {
+		result := slackIDRegex.FindStringSubmatch(testCase.TestMsg)
+
+		if len(result) != len(testCase.Expected) {
+			t.Fatal("Did not match all ids in input", result)
+		}
+
+		for k, x := range result {
+			if strings.Compare(x, testCase.Expected[k]) != 0 {
+				t.Fatal("Expected:", x, "got:", testCase.Expected[k])
+			}
 		}
 	}
 }
