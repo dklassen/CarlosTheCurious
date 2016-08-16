@@ -29,6 +29,9 @@ var (
 )
 
 func parseRecpientsText(msg Message) []Recipient {
+type SlackID struct {
+	Value string
+}
 type SlackIDType int
 
 const (
@@ -37,6 +40,20 @@ const (
 	UserID          SlackIDType = iota
 	UnknownID       SlackIDType = iota
 )
+
+func (id *SlackID) Kind() SlackIDType {
+	switch string(id.Value[0]) {
+	case "G":
+		return GroupChannelID
+	case "C":
+		return PublicChannelID
+	case "U":
+		return UserID
+	default:
+		logrus.Error("Unable to identify the kind of channel from id:", id.Value)
+		return UnknownID
+	}
+}
 
 	recipients := []Recipient{}
 		recipient := Recipient{SlackID: match[1]}
