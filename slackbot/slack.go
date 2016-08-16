@@ -40,6 +40,23 @@ type Channel struct {
 	Members   []string `json:"members"`
 }
 
+type GroupList struct {
+	Ok     bool    `json:"ok"`
+	Groups []Group `json:"groups"`
+	Error  string  `json:"error,omitempty"`
+}
+
+type Group struct {
+	ID         string   `json:"id"`
+	Created    uint     `json:"created"`
+	Creator    string   `json:"creator"`
+	IsArchived bool     `json:"is_archived"`
+	IsGroup    bool     `json:"is_group"`
+	IsMpim     bool     `json:"is_mpim"`
+	Members    []string `json:"members"`
+	Name       string   `json:"name"`
+}
+
 type UserList struct {
 	Ok      bool   `json:"ok"`
 	Members []User `json:"members"`
@@ -95,6 +112,7 @@ type Robot struct {
 	SendChan   chan Message
 	Shutdown   chan int
 	Channels   []Channel
+	Groups     []Group
 	Connection *websocket.Conn
 	ListenChan chan Message
 }
@@ -170,6 +188,24 @@ func downloadChannelList(token string) (ChannelList, error) {
 	err = json.Unmarshal(body, &channelList)
 
 	return channelList, err
+}
+
+func downloadGroupList(token string) (GroupList, error) {
+	resp, err := http.Get(fmt.Sprintf("https://slack.com/api/groups.list?token=%s", token))
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	var groupList GroupList
+	err = json.Unmarshal(body, &groupList)
+
+	return groupList, err
 }
 
 func (msgHandler *MessageHandler) registerCommand(matchPattern string, h HandlerFunc) {
@@ -397,22 +433,36 @@ func (robot *Robot) SlackIDString() string {
 	return "<@" + robot.ID + ">"
 }
 
-func (robot *Robot) DownloadUsersMap() {
-	logrus.Info("Downloading channel listings")
-	channelList, _ := downloadChannelList(robot.APIToken)
-	if !channelList.Ok {
-		logrus.Panic("Unable to download channels list from Slack: ", channelList.Error)
+func (robot *Robot) DownloadGroups() {
+	groups, _ := downloadGroupList(robot.APIToken)
+	if !groups.Ok {
+		logrus.Fatal("Unable to download channels list from Slack: ", groups.Error)
 	}
-	logrus.Info("Finished downloading channel listings")
-	logrus.Info("Downloading user listings")
+	robot.Groups = groups.Groups
+}
+
+func (robot *Robot) DownloadChannels() {
+	channels, _ := downloadChannelList(robot.APIToken)
+	if !channels.Ok {
+		logrus.Fatal("Unable to download channels list from Slack: ", channels.Error)
+	}
+	robot.Channels = channels.Channels
+}
+
+func (robot *Robot) DownloadUsers() {
 	users, _ := downloadUserList(robot.APIToken)
 	if !users.Ok {
-		logrus.Panic("Unable to download users list from Slack: ", users.Error)
+		logrus.Fatal("Unable to download users list from Slack: ", users.Error)
 	}
-	logrus.Info("Finished downloading user listings")
-
-	robot.Channels = channelList.Channels
 	robot.Users = users.Members
+}
+
+func (robot *Robot) DownloadUsersMap() {
+	logrus.Info("Downloading information from slack")
+	robot.DownloadUsers()
+	robot.DownloadChannels()
+	robot.DownloadGroups()
+	logrus.Info("Finished downloading users, channels, and group information")
 }
 
 func HerokuServer() {
