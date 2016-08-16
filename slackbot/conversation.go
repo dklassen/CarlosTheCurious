@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	userIDRegex = regexp.MustCompile("<@([a-zA-Z0-9]+)>")
-	stageLookup = map[string]Stage{
+	slackIDRegex = regexp.MustCompile("<@([a-zA-Z0-9]+)>")
+	stageLookup  = map[string]Stage{
 		"initial":       getQuestion,
 		"getAnswers":    getAnswers,
 		"getRecipients": getRecipients,
@@ -30,8 +30,8 @@ var (
 
 func parseRecpientsText(msg Message) []Recipient {
 	recipients := []Recipient{}
-	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
 		recipient := Recipient{SlackID: match[1]}
+	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
 		recipients = append(recipients, recipient)
 	}
 	return recipients
