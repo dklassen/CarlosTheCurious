@@ -62,6 +62,22 @@ func NewPoll(kind, creator, channel string) *Poll {
 	}
 }
 
+func (poll *Poll) Save() error {
+	return GetDB().Save(&poll).Error
+}
+
+func (poll *Poll) AddRecipient(recipient Recipient) error {
+	return GetDB().
+		Model(poll).
+		Association("Recipients").
+		Append(recipient).Error
+}
+
+func (poll *Poll) SetRecipients(recipients []Recipient) error {
+	poll.Recipients = recipients
+	return poll.Save()
+}
+
 func FindFirstPollByStage(name, stage string) *Poll {
 	poll := &Poll{}
 	GetDB().Where("name = ? AND stage = ?", name, stage).First(poll)
