@@ -5,11 +5,7 @@ MAINTAINER Dana Klassen <dana.klassen@shopify.com>
 ENV PROJECT /go/src/github.com/dklassen/CarlosTheCurious
 WORKDIR $PROJECT
 
-RUN mkdir -p $PROJECT
-COPY . $PROJECT
-
 RUN apk add --update ca-certificates
-RUN rm -rf /var/cache/apk/* /tmp/*
 
 RUN update-ca-certificates
 
@@ -19,6 +15,9 @@ RUN apk update && \
             git \
             openssh
 
+
+RUN mkdir -p $PROJECT
+COPY . $PROJECT
 
 RUN go get github.com/tools/godep
 RUN godep go install -v 

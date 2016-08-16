@@ -19,13 +19,12 @@ console:
 	docker run -it --entrypoint /bin/bash carlos-the-curious
 
 database-up:
-	docker run -d --name carlos-postgres  --publish 5432:5432 postgres
+	docker run -d --name carlos-postgres  --publish 5432:5432 carlos/postgres
 
 database-down: database-stop database-clean
 
 database-stop:
 	docker stop carlos-postgres
-
 
 database-build:
 	docker build --tag carlos/postgres --file Dockerfile.devdb .
