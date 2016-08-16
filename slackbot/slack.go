@@ -106,13 +106,13 @@ type Robot struct {
 	Name       string
 	Origin     string
 	APIToken   string
-	Users      []User
+	Users      map[string]User
 	Client     WebClienter // http.Client
 	Handler    *MessageHandler
 	SendChan   chan Message
 	Shutdown   chan int
-	Channels   []Channel
-	Groups     []Group
+	Channels   map[string]Channel
+	Groups     map[string]Group
 	Connection *websocket.Conn
 	ListenChan chan Message
 }
@@ -438,7 +438,12 @@ func (robot *Robot) DownloadGroups() {
 	if !groups.Ok {
 		logrus.Fatal("Unable to download channels list from Slack: ", groups.Error)
 	}
-	robot.Groups = groups.Groups
+
+	groupMap := make(map[string]Group)
+	for _, group := range groups.Groups {
+		groupMap[group.ID] = group
+	}
+	robot.Groups = groupMap
 }
 
 func (robot *Robot) DownloadChannels() {
@@ -446,7 +451,12 @@ func (robot *Robot) DownloadChannels() {
 	if !channels.Ok {
 		logrus.Fatal("Unable to download channels list from Slack: ", channels.Error)
 	}
-	robot.Channels = channels.Channels
+
+	channelMap := make(map[string]Channel)
+	for _, channel := range channels.Channels {
+		channelMap[channel.ID] = channel
+	}
+	robot.Channels = channelMap
 }
 
 func (robot *Robot) DownloadUsers() {
@@ -454,7 +464,11 @@ func (robot *Robot) DownloadUsers() {
 	if !users.Ok {
 		logrus.Fatal("Unable to download users list from Slack: ", users.Error)
 	}
-	robot.Users = users.Members
+	userMap := make(map[string]User)
+	for _, user := range users.Members {
+		userMap[user.ID] = user
+	}
+	robot.Users = userMap
 }
 
 func (robot *Robot) DownloadUsersMap() {
