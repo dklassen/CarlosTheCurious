@@ -29,6 +29,15 @@ var (
 )
 
 func parseRecpientsText(msg Message) []Recipient {
+type SlackIDType int
+
+const (
+	PublicChannelID SlackIDType = iota
+	GroupChannelID  SlackIDType = iota
+	UserID          SlackIDType = iota
+	UnknownID       SlackIDType = iota
+)
+
 	recipients := []Recipient{}
 		recipient := Recipient{SlackID: match[1]}
 	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
