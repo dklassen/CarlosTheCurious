@@ -28,7 +28,6 @@ var (
 	}
 )
 
-func parseRecpientsText(msg Message) []Recipient {
 type SlackID struct {
 	Value string
 }
@@ -55,10 +54,30 @@ func (id *SlackID) Kind() SlackIDType {
 	}
 }
 
+func parseRecpientsText(robot *Robot, msg Message) []Recipient {
 	recipients := []Recipient{}
-		recipient := Recipient{SlackID: match[1]}
+
 	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		recipients = append(recipients, recipient)
+		logrus.Info(match)
+		id := SlackID{Value: match[1]}
+
+		switch id.Kind() {
+		case PublicChannelID:
+			channel, ok := robot.Channels[id.Value]
+			if !ok {
+				logrus.Error("Unable to find channel with id: ", id.Value)
+			} else {
+				for _, r := range channel.Members {
+					recipient := Recipient{SlackID: r}
+					recipients = append(recipients, recipient)
+				}
+			}
+		case UserID:
+			recipient := Recipient{SlackID: id.Value}
+			recipients = append(recipients, recipient)
+		default:
+			logrus.Error("Unable to identify slackID ", id.Value)
+		}
 	}
 	return recipients
 }
