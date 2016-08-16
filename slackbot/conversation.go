@@ -31,6 +31,7 @@ var (
 type SlackID struct {
 	Value string
 }
+
 type SlackIDType int
 
 const (
@@ -248,9 +249,18 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 }
 
 func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
+	recipients := parseRecpientsText(robot, *msg)
+
+	if err := poll.SetRecipients(recipients); err != nil {
+		logrus.Error("Unable to set recipients", err)
+		robot.SendMessage(msg.Channel, "Had trouble setting the recipients. Make sure they are valid channel names and try again")
+		return err
+	}
+
 	poll.Stage = "sendPoll"
-	poll.Recipients = parseRecpientsText(*msg)
-	if err := GetDB().Save(&poll).Error; err != nil {
+	if err := poll.Save(); err != nil {
+		logrus.Error("Unable to save poll", err)
+		robot.SendMessage(msg.Channel, "Error saving the poll. Try again to set the recpients")
 		return err
 	}
 
