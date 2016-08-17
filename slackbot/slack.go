@@ -22,6 +22,33 @@ var (
 	counter uint64 //All message sent during a session need to have an monotonically increasing id
 )
 
+const (
+	PublicChannelID SlackIDType = iota
+	GroupChannelID  SlackIDType = iota
+	UserID          SlackIDType = iota
+	UnknownID       SlackIDType = iota
+)
+
+type SlackID struct {
+	Value string
+}
+
+type SlackIDType int
+
+func (id *SlackID) Kind() SlackIDType {
+	switch string(id.Value[0]) {
+	case "G":
+		return GroupChannelID
+	case "C":
+		return PublicChannelID
+	case "U":
+		return UserID
+	default:
+		logrus.Error("Unable to identify the kind of channel from id:", id.Value)
+		return UnknownID
+	}
+}
+
 type responseRTMSelf struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`

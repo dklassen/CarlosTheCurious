@@ -28,33 +28,6 @@ var (
 	}
 )
 
-type SlackID struct {
-	Value string
-}
-
-type SlackIDType int
-
-const (
-	PublicChannelID SlackIDType = iota
-	GroupChannelID  SlackIDType = iota
-	UserID          SlackIDType = iota
-	UnknownID       SlackIDType = iota
-)
-
-func (id *SlackID) Kind() SlackIDType {
-	switch string(id.Value[0]) {
-	case "G":
-		return GroupChannelID
-	case "C":
-		return PublicChannelID
-	case "U":
-		return UserID
-	default:
-		logrus.Error("Unable to identify the kind of channel from id:", id.Value)
-		return UnknownID
-	}
-}
-
 func parseRecpientsText(robot *Robot, msg Message) []Recipient {
 	recipients := []Recipient{}
 
