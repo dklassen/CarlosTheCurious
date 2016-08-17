@@ -29,7 +29,7 @@ var (
 )
 
 func parseRecpientsText(robot *Robot, msg Message) []Recipient {
-	recipients := []Recipient{}
+	recipients := make(map[string]Recipient)
 
 	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
 		logrus.Info(match)
@@ -43,17 +43,24 @@ func parseRecpientsText(robot *Robot, msg Message) []Recipient {
 			} else {
 				for _, r := range channel.Members {
 					recipient := Recipient{SlackID: r}
-					recipients = append(recipients, recipient)
+					recipients[recipient.SlackID] = recipient
 				}
 			}
 		case UserID:
 			recipient := Recipient{SlackID: id.Value}
-			recipients = append(recipients, recipient)
+			recipients[recipient.SlackID] = recipient
 		default:
 			logrus.Error("Unable to identify slackID ", id.Value)
 		}
 	}
-	return recipients
+
+	// NOTE(dana) is there a nicer way to get the values from a map?
+	recipientList := []Recipient{}
+	for _, v := range recipients {
+		recipientList = append(recipientList, v)
+	}
+
+	return recipientList
 }
 
 func usage(robot *Robot, msg *Message, captureGroups []string) error {

@@ -37,9 +37,9 @@ func TestSlackPreviewAttachments(t *testing.T) {
 						Short: true,
 					},
 					AttachmentField{
-						Title: "Recipients:",
-						Value: "<@derp>, <@derp2>",
-						Short: false,
+						Title: "# of Recipients:",
+						Value: "2",
+						Short: true,
 					},
 					AttachmentField{
 						Title: "Possible Answers:",
@@ -56,11 +56,11 @@ func TestSlackPreviewAttachments(t *testing.T) {
 		result := test.Input.SlackPreviewAttachment()
 		output := test.Expected
 		if output.Title != result.Title {
-			t.Error("Expected: ", output.Title, "got: ", result.Title)
+			t.Fatal("Expected: ", output.Title, "got: ", result.Title)
 		}
 
 		if output.Pretext != result.Pretext {
-			t.Error("Expected: ", output.Pretext, "got: ", result.Pretext)
+			t.Fatal("Expected: ", output.Pretext, "got: ", result.Pretext)
 		}
 
 		if output.Text != result.Text {

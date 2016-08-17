@@ -146,19 +146,14 @@ func (r *Recipient) SlackIDString() string {
 	return "<@" + r.SlackID + ">"
 }
 
-func (poll *Poll) slackRecipientString() string {
-	recipientString := ""
-	recipients := []Recipient{}
-	GetDB().Model(&poll).Related(&recipients)
+func (poll *Poll) numberOfRecipients() int {
+	return GetDB().Model(&poll).Association("Recipients").Count()
+}
 
-	for k, r := range recipients {
-		if k == 0 {
-			recipientString = r.SlackIDString()
-		} else {
-			recipientString = recipientString + ", " + r.SlackIDString()
-		}
-	}
-	return recipientString
+func (poll *Poll) numberOfResponses() int {
+	var numOfResponses int
+	GetDB().Model(&PollResponse{}).Where("poll_id = ? AND value is NOT NULL", poll.ID).Count(&numOfResponses)
+	return numOfResponses
 }
 
 func (poll *Poll) slackAnswerString() string {
@@ -176,10 +171,8 @@ func (poll *Poll) slackAnswerString() string {
 }
 
 func responseSummaryField(poll *Poll) AttachmentField {
-	total := GetDB().Model(&poll).Association("Recipients").Count()
-
-	var responded int
-	GetDB().Model(&PollResponse{}).Where("poll_id = ? AND value is NOT NULL", poll.ID).Count(&responded)
+	total := poll.numberOfRecipients()
+	responded := poll.numberOfResponses()
 	responseRatio := (responded / total) * 100
 
 	return AttachmentField{
@@ -199,8 +192,8 @@ func possibleAnswerField(poll *Poll) AttachmentField {
 
 func recipientsField(poll *Poll) AttachmentField {
 	return AttachmentField{
-		Title: "Recipients:",
-		Value: poll.slackRecipientString(),
+		Title: "# of Recipients:",
+		Value: fmt.Sprintf("%d", poll.numberOfRecipients()),
 		Short: false,
 	}
 }
