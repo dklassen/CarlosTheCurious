@@ -19,12 +19,20 @@ var (
 
 type Poll struct {
 	gorm.Model
-	UUID            string `gorm:"not null;unique"`
-	Channel         string `gorm:"not null"`
-	Creator         string `gorm:"not null"`
-	Stage           string
-	Kind            string `gorm:"not null"`
-	Question        string
+	UUID    string `gorm:"not null;unique"`
+	Channel string `gorm:"not null"`
+	Creator string `gorm:"not null"`
+
+	// The creation stage the poll is in initial -> getQuestion -> getRecipient -> Active -> Cancelled or Archived
+	Stage string
+
+	// Represents the kind of poll this is. Feedback or Response. Feedback polls as for free text responses, while reponse polls
+	// take a list of possible responses
+	Kind string `gorm:"not null"`
+
+	Question string
+
+	// We track recipients at the user level. Each recipient is a user
 	Recipients      []Recipient
 	Responses       []PollResponse
 	PossibleAnswers []PossibleAnswer
