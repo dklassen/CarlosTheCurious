@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	userIDRegex = regexp.MustCompile("<@([a-zA-Z0-9]+)>")
-	stageLookup = map[string]Stage{
+	slackIDRegex = regexp.MustCompile("<(?:@|#)([a-zA-Z0-9]+)>")
+	stageLookup  = map[string]Stage{
 		"initial":       getQuestion,
 		"getAnswers":    getAnswers,
 		"getRecipients": getRecipients,
@@ -28,13 +28,39 @@ var (
 	}
 )
 
-func parseRecpientsText(msg Message) []Recipient {
-	recipients := []Recipient{}
-	for _, match := range userIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		recipient := Recipient{SlackID: match[1]}
-		recipients = append(recipients, recipient)
+func parseRecpientsText(robot *Robot, msg Message) []Recipient {
+	recipients := make(map[string]Recipient)
+
+	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
+		logrus.Info(match)
+		id := SlackID{Value: match[1]}
+
+		switch id.Kind() {
+		case PublicChannelID:
+			channel, ok := robot.Channels[id.Value]
+			if !ok {
+				logrus.Error("Unable to find channel with id: ", id.Value)
+			} else {
+				for _, r := range channel.Members {
+					recipient := Recipient{SlackID: r}
+					recipients[recipient.SlackID] = recipient
+				}
+			}
+		case UserID:
+			recipient := Recipient{SlackID: id.Value}
+			recipients[recipient.SlackID] = recipient
+		default:
+			logrus.Error("Unable to identify slackID ", id.Value)
+		}
 	}
-	return recipients
+
+	// NOTE(dana) is there a nicer way to get the values from a map?
+	recipientList := []Recipient{}
+	for _, v := range recipients {
+		recipientList = append(recipientList, v)
+	}
+
+	return recipientList
 }
 
 func usage(robot *Robot, msg *Message, captureGroups []string) error {
@@ -203,9 +229,18 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 }
 
 func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
+	recipients := parseRecpientsText(robot, *msg)
+
+	if err := poll.SetRecipients(recipients); err != nil {
+		logrus.Error("Unable to set recipients", err)
+		robot.SendMessage(msg.Channel, "Had trouble setting the recipients. Make sure they are valid channel names and try again")
+		return err
+	}
+
 	poll.Stage = "sendPoll"
-	poll.Recipients = parseRecpientsText(*msg)
-	if err := GetDB().Save(&poll).Error; err != nil {
+	if err := poll.Save(); err != nil {
+		logrus.Error("Unable to save poll", err)
+		robot.SendMessage(msg.Channel, "Error saving the poll. Try again to set the recpients")
 		return err
 	}
 
