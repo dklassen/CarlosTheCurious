@@ -215,15 +215,21 @@ func pollTypeField(poll *Poll) AttachmentField {
 }
 
 func (poll *Poll) SlackPollSummary() Attachment {
+	attachments := []AttachmentField{}
+
+	attachments = append(attachments, pollTypeField(poll))
+
+	if poll.Kind == ResponsePoll {
+		attachments = append(attachments, possibleAnswerField(poll))
+	}
+
+	attachments = append(attachments, responseSummaryField(poll))
+
 	return Attachment{
 		Title:   poll.UUID,
 		Pretext: "Here are the results so far:",
 		Text:    poll.Question,
-		Fields: []AttachmentField{
-			recipientsField(poll),
-			possibleAnswerField(poll),
-			responseSummaryField(poll),
-		},
+		Fields:  attachments,
 	}
 }
 
