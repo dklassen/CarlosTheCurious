@@ -96,7 +96,7 @@ func activePolls(robot *Robot, msg *Message, captures []string) (err error) {
 
 	var result bytes.Buffer
 	for k, v := range polls {
-		result.WriteString(fmt.Sprintf("%d. %s - id:%s", k+1, v.Question, v.UUID))
+		result.WriteString(fmt.Sprintf("%d. %s - id:%s\n", k+1, v.Question, v.UUID))
 	}
 
 	attachment := Attachment{
