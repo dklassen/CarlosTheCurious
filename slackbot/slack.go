@@ -136,7 +136,6 @@ type Robot struct {
 	Users      map[string]User
 	Client     WebClienter // http.Client
 	Handler    *MessageHandler
-	SendChan   chan Message
 	Shutdown   chan int
 	Channels   map[string]Channel
 	Groups     map[string]Group
@@ -145,16 +144,17 @@ type Robot struct {
 }
 
 type Message struct {
-	ID            uint64   `json:"id"`
-	Type          string   `json:"type"`
-	Subtype       string   `json:"subtype"`
-	Channel       string   `json:"channel"`
-	User          string   `json:"user"`
-	Text          string   `json:"text"`
-	Timestamp     string   `json:"ts"`
-	Handled       bool     `json:"-"` // Did message match a handler?
-	DirectMention bool     `json:"-"` // Does message contain a direct mention
-	CaptureGroup  []string `json:"-"` // hold the capture group when a command is matched
+	ID            uint64    `json:"id"`
+	Type          string    `json:"type"`
+	Subtype       string    `json:"subtype"`
+	Channel       string    `json:"channel"`
+	User          string    `json:"user"`
+	Text          string    `json:"text"`
+	Timestamp     string    `json:"ts"`
+	Handled       bool      `json:"-"` // Did message match a handler?
+	DirectMention bool      `json:"-"` // Does message contain a direct mention
+	CaptureGroup  []string  `json:"-"` // hold the capture group when a command is matched
+	Processed     chan bool `json:"-"` // Channel to signal message has been processed
 }
 
 type Attachment struct {
@@ -285,8 +285,8 @@ func NewRobot(origin, token string) *Robot {
 		APIToken:   token,
 		Handler:    defaultMessageHandler,
 		Client:     &SlackWebClient{HTTPClient: &http.Client{}},
-		ListenChan: make(chan Message), SendChan: make(chan Message),
-		Shutdown: make(chan int),
+		ListenChan: make(chan Message, 100),
+		Shutdown:   make(chan int),
 	}
 }
 
