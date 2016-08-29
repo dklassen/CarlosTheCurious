@@ -344,11 +344,15 @@ func (robot *Robot) Listen() {
 			if err != nil {
 				logrus.Error("Error receiving over websocket: ", err.Error())
 			}
+
+			if msg.isMessage() != true {
+				continue
+			}
+
+			msg.Processed = make(chan bool)
 			robot.ListenChan <- *msg
 		}
 	}()
-
-	return
 }
 
 func (robot Robot) SendMessage(channel, msg string) (err error) {
@@ -441,10 +445,6 @@ func (robot *Robot) Dispatch(msg *Message) {
 }
 
 func (robot Robot) ProcessMessage(msg *Message) {
-	if msg.isMessage() != true {
-		return
-	}
-
 	if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
 		msg.DirectMention = true
 		msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
@@ -454,6 +454,8 @@ func (robot Robot) ProcessMessage(msg *Message) {
 	if msg.User != robot.ID {
 		robot.Dispatch(msg)
 	}
+
+	msg.Processed <- true
 }
 
 func (robot *Robot) SlackIDString() string {
