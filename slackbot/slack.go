@@ -143,17 +143,16 @@ type Robot struct {
 }
 
 type Message struct {
-	ID            uint64    `json:"id"`
-	Type          string    `json:"type"`
-	Subtype       string    `json:"subtype"`
-	Channel       string    `json:"channel"`
-	User          string    `json:"user"`
-	Text          string    `json:"text"`
-	Timestamp     string    `json:"ts"`
-	Handled       bool      `json:"-"` // Did message match a handler?
-	DirectMention bool      `json:"-"` // Does message contain a direct mention
-	CaptureGroup  []string  `json:"-"` // hold the capture group when a command is matched
-	Processed     chan bool `json:"-"` // Channel to signal message has been processed
+	ID            uint64   `json:"id"`
+	Type          string   `json:"type"`
+	Subtype       string   `json:"subtype"`
+	Channel       string   `json:"channel"`
+	User          string   `json:"user"`
+	Text          string   `json:"text"`
+	Timestamp     string   `json:"ts"`
+	Handled       bool     `json:"-"` // Did message match a handler?
+	DirectMention bool     `json:"-"` // Does message contain a direct mention
+	CaptureGroup  []string `json:"-"` // hold the capture group when a command is matched
 }
 
 type Attachment struct {
@@ -347,7 +346,6 @@ func (robot *Robot) Listen() {
 				continue
 			}
 
-			msg.Processed = make(chan bool)
 			robot.ListenChan <- *msg
 		}
 	}()
@@ -443,27 +441,14 @@ func (robot *Robot) Dispatch(msg *Message) {
 }
 
 func (robot Robot) ProcessMessage(msg *Message) {
-	go func(msg *Message) {
-		if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
-			msg.DirectMention = true
-			msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
-			msg.Text = strings.Trim(msg.Text, " ")
-		}
+	if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
+		msg.DirectMention = true
+		msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
+		msg.Text = strings.Trim(msg.Text, " ")
+	}
 
-		if msg.User != robot.ID {
-			robot.Dispatch(msg)
-		}
-		msg.Processed <- true
-	}(msg)
-
-	for {
-		select {
-		case <-msg.Processed:
-			return
-		case <-time.After(time.Second * 1):
-			logrus.Error("Message was not processed during threshold. Giving up")
-			return
-		}
+	if msg.User != robot.ID {
+		robot.Dispatch(msg)
 	}
 }
 
