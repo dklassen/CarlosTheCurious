@@ -284,7 +284,7 @@ func NewRobot(origin, token string) *Robot {
 		APIToken:   token,
 		Handler:    defaultMessageHandler,
 		Client:     &SlackWebClient{HTTPClient: &http.Client{}},
-		ListenChan: make(chan Message, 100),
+		ListenChan: make(chan Message, 10),
 	}
 }
 
@@ -443,17 +443,28 @@ func (robot *Robot) Dispatch(msg *Message) {
 }
 
 func (robot Robot) ProcessMessage(msg *Message) {
-	if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
-		msg.DirectMention = true
-		msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
-		msg.Text = strings.Trim(msg.Text, " ")
-	}
+	go func(msg *Message) {
+		if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
+			msg.DirectMention = true
+			msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
+			msg.Text = strings.Trim(msg.Text, " ")
+		}
 
-	if msg.User != robot.ID {
-		robot.Dispatch(msg)
-	}
+		if msg.User != robot.ID {
+			robot.Dispatch(msg)
+		}
+		msg.Processed <- true
+	}(msg)
 
-	msg.Processed <- true
+	for {
+		select {
+		case <-msg.Processed:
+			return
+		case <-time.After(time.Second * 1):
+			logrus.Error("Message was not processed during threshold. Giving up")
+			return
+		}
+	}
 }
 
 func (robot *Robot) SlackIDString() string {
@@ -547,8 +558,15 @@ func HerokuPing() {
 	}
 }
 
-func (robot Robot) Run() {
 func SetupHerokuKeepAlive() {
+func MessageWorker(robot *Robot) {
+	for {
+		msg := <-robot.ListenChan
+		robot.ProcessMessage(&msg)
+	}
+}
+
+func Run(origin, apiToken string) {
 	if os.Getenv("PLATFORM") == "HEROKU" {
 		logrus.Info("Heroku Platform detected running webserver and keepalive status ping")
 		HerokuServer()
@@ -557,19 +575,20 @@ func SetupHerokuKeepAlive() {
 }
 	SetupHerokuKeepAlive()
 
+	robot := NewRobot(origin, apiToken)
 	robot.SlackConnect()
 	robot.DownloadUsersMap()
 	robot.Listen()
 	robot.RegisterCommands(registeredCommands)
 	logrus.Info("Ready and waiting for messages")
 
+	for w := 0; w < 4; w++ {
+		go MessageWorker(robot)
+	}
+
 	checkInterval := time.NewTicker(time.Duration(12) * time.Hour)
 	for {
 		select {
-		case msg := <-robot.ListenChan:
-			robot.ProcessMessage(&msg)
-		case <-robot.Shutdown:
-			return
 		case <-checkInterval.C:
 			go robot.DownloadUsersMap()
 		}
