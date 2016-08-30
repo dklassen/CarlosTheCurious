@@ -95,6 +95,17 @@ func FindFirstPollByStage(name, stage string) *Poll {
 	return poll
 }
 
+func (p *Poll) AddResponse(userID, responseValue string) error {
+	response := PollResponse{Value: responseValue, SlackID: userID}
+	return GetDB().Model(p).Association("Responses").Append(response).Error
+}
+
+func (p *Poll) GetResponses() ([]PollResponse, error) {
+	responses := []PollResponse{}
+	err := GetDB().Model(p).Association("Responses").Find(&responses).Error
+	return responses, err
+}
+
 // FindFirstPreActivePollByName finds the first preactive poll based on name
 // NOTE:: OMG this is bad lets get rid of these
 func FindFirstPreActivePollByName(name string) (*Poll, error) {
