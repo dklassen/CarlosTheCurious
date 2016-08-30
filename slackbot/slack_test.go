@@ -67,7 +67,6 @@ func CleanSetup() Robot {
 		Handler:    defaultMessageHandler,
 		Client:     &MockHTTPClient{},
 		ListenChan: make(chan Message),
-		Shutdown:   make(chan int),
 	}
 	robot.RegisterCommands(registeredCommands)
 

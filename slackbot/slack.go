@@ -136,7 +136,6 @@ type Robot struct {
 	Users      map[string]User
 	Client     WebClienter // http.Client
 	Handler    *MessageHandler
-	Shutdown   chan int
 	Channels   map[string]Channel
 	Groups     map[string]Group
 	Connection *websocket.Conn
@@ -286,7 +285,6 @@ func NewRobot(origin, token string) *Robot {
 		Handler:    defaultMessageHandler,
 		Client:     &SlackWebClient{HTTPClient: &http.Client{}},
 		ListenChan: make(chan Message, 100),
-		Shutdown:   make(chan int),
 	}
 }
 
