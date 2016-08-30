@@ -518,37 +518,25 @@ func (robot *Robot) DownloadUsersMap() {
 }
 
 func HerokuServer() {
-	go func() {
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8000"
-		}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
 
-		logrus.Info("listening on port:", port)
-		http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-			io.WriteString(w, "pong")
-		})
+	logrus.Info("listening on port:", port)
+	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, "pong")
+	})
 
-		err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
+	err := http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
-		if err != nil {
-			logrus.Fatal(err)
-		}
-	}()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 }
 
 func HerokuPing() {
-	go func() {
-		pingInterval := time.NewTicker(time.Duration(5) * time.Minute)
-		for {
-			select {
-			case <-pingInterval.C:
-				logrus.Info("Pinging Heroku server")
-				http.Get("https://carlos-the-curious.herokuapp.com/status")
-			}
-		}
-	}()
-}
+	pingInterval := time.NewTicker(time.Duration(5) * time.Minute)
 	for {
 		select {
 		case <-pingInterval.C:
@@ -558,7 +546,6 @@ func HerokuPing() {
 	}
 }
 
-func SetupHerokuKeepAlive() {
 func MessageWorker(robot *Robot) {
 	for {
 		msg := <-robot.ListenChan
@@ -569,11 +556,9 @@ func MessageWorker(robot *Robot) {
 func Run(origin, apiToken string) {
 	if os.Getenv("PLATFORM") == "HEROKU" {
 		logrus.Info("Heroku Platform detected running webserver and keepalive status ping")
-		HerokuServer()
-		HerokuPing()
+		go HerokuServer()
+		go HerokuPing()
 	}
-}
-	SetupHerokuKeepAlive()
 
 	robot := NewRobot(origin, apiToken)
 	robot.SlackConnect()
