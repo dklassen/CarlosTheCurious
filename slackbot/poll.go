@@ -98,6 +98,12 @@ func (poll *Poll) SetRecipients(recipients []Recipient) error {
 	return poll.Save()
 }
 
+func (poll *Poll) GetRecipients() ([]Recipient, error) {
+	recipients := []Recipient{}
+	err := GetDB().Model(poll).Related(&recipients).Error
+	return recipients, err
+}
+
 func FindFirstPollByStage(name, stage string) *Poll {
 	poll := &Poll{}
 	GetDB().Where("name = ? AND stage = ?", name, stage).First(poll)

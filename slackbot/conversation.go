@@ -229,7 +229,6 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 	recipients := parseRecpientsText(robot, *msg)
 
 	if err := poll.SetRecipients(recipients); err != nil {
-		logrus.Error("Unable to set recipients", err)
 		robot.SendMessage(msg.Channel, "Had trouble setting the recipients. Make sure they are valid channel names and try again")
 		return err
 	}
@@ -250,8 +249,12 @@ func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 		return err
 	}
 
-	recipients := []Recipient{}
-	GetDB().Model(&poll).Related(&recipients)
+	recipients, err := poll.GetRecipients()
+	if err != nil {
+		robot.SendMessage(msg.Channel, "hummmmm something seems to be wrong with getting the list of recipients")
+		return err
+	}
+
 	for _, recipient := range recipients {
 		robot.PostMessage(recipient.SlackID, "", poll.SlackRecipientAttachment())
 	}
