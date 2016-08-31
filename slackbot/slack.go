@@ -532,8 +532,7 @@ func HerokuPing() {
 }
 
 func MessageWorker(robot *Robot) {
-	for {
-		msg := <-robot.ListenChan
+	for msg := range robot.ListenChan {
 		robot.ProcessMessage(&msg)
 	}
 }
