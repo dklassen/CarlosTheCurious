@@ -218,8 +218,7 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 	}
 
 	poll.PossibleAnswers = answers
-	poll.Stage = "getRecipients"
-	if err := poll.Save(); err != nil {
+	if err := poll.TransitionTo("getRecipients"); err != nil {
 		return err
 	}
 
@@ -235,9 +234,7 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 		return err
 	}
 
-	poll.Stage = "sendPoll"
-	if err := poll.Save(); err != nil {
-		logrus.Error("Unable to save poll", err)
+	if err := poll.TransitionTo("sendPoll"); err != nil {
 		robot.SendMessage(msg.Channel, "Error saving the poll. Try again to set the recpients")
 		return err
 	}
@@ -249,8 +246,9 @@ func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 		return robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
 	}
 
-	poll.Stage = "active"
-	GetDB().Save(poll)
+	if err := poll.TransitionTo("active"); err != nil {
+		return err
+	}
 
 	recipients := []Recipient{}
 	GetDB().Model(&poll).Related(&recipients)
