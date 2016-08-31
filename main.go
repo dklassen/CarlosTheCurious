@@ -15,7 +15,12 @@ func mustLoadConfig() *slackbot.Config {
 
 func main() {
 	conf := mustLoadConfig()
-	logrus.Info("Starting Carlos the Curious")
+
+	logrus.WithFields(logrus.Fields{
+		"message_workers": conf.Workers,
+		"origin":          conf.Origin,
+	}).Info("Starting Carlos the Curious")
+
 	slackbot.SetupDatabase(conf.DatabaseURL, conf.Debug)
-	slackbot.Run(conf.Origin, conf.SlackAPIToken)
+	slackbot.Run(conf.Origin, conf.SlackAPIToken, conf.Workers)
 }

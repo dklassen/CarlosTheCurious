@@ -537,7 +537,7 @@ func MessageWorker(robot *Robot) {
 	}
 }
 
-func Run(origin, apiToken string) {
+func Run(origin, apiToken string, workers int) {
 	if os.Getenv("PLATFORM") == "HEROKU" {
 		logrus.Info("Heroku Platform detected running webserver and keepalive status ping")
 		go HerokuServer()
@@ -551,7 +551,7 @@ func Run(origin, apiToken string) {
 	robot.RegisterCommands(registeredCommands)
 	logrus.Info("Ready and waiting for messages")
 
-	for w := 0; w < 4; w++ {
+	for w := 0; w < workers; w++ {
 		go MessageWorker(robot)
 	}
 

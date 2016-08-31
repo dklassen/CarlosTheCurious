@@ -17,6 +17,9 @@ type Config struct {
 
 	// DatabaseConnectionString is the full connection string that is passed in
 	DatabaseURL string
+
+	// Workers is the number of goroutines to spin up for processing the message queue
+	Workers int
 }
 
 var (
@@ -24,6 +27,7 @@ var (
 	databaseURL = flag.String("database_url", "", "Name of the database we are connecting to")
 	origin      = flag.String("origin", "https://api.slack.com", "Slack origin url")
 	debug       = flag.Bool("debug", false, "Enable debug mode")
+	workers     = flag.Int("workers", 4, "Configure the number of message workers")
 )
 
 // LoadFromFlags loads all global config from CLI flags
@@ -34,5 +38,6 @@ func LoadFromFlags() (*Config, error) {
 		DatabaseURL:   *databaseURL,
 		Origin:        *origin,
 		Debug:         *debug,
+		Workers:       *workers,
 	}, nil
 }
