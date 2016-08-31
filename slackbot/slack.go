@@ -342,7 +342,7 @@ func (robot *Robot) Listen() {
 				logrus.Error("Error receiving over websocket: ", err.Error())
 			}
 
-			if msg.isMessage() != true {
+			if !msg.isMessage() {
 				continue
 			}
 
