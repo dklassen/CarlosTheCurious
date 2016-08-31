@@ -2,4 +2,5 @@
 set -xeo
 
 exec CarlosTheCurious  --token=$SLACKTOKEN\
-                       --database_url=$DATABASE_URL
+                       --database_url=$DATABASE_URL\
+                       --workers=$(CARLOS_WORKERS:-4)
