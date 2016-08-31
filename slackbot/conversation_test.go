@@ -116,7 +116,7 @@ func TestCreatePoll(t *testing.T) {
 			InputMessage:    Message{Text: "bananas", User: "Balony", Channel: "coffee"},
 			InputCaptures:   []string{"", "response"},
 			ExpectedError:   false,
-			ExpectedMessage: []byte("Creating a response poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedMessage: []byte("Creating a response poll. You can cancel the poll any time with `cancel poll amazing`\nWhat was the question you wanted to ask?"),
 			ExpectedPoll:    Poll{Stage: "initial", Kind: ResponsePoll},
 		},
 		// Generate feedback poll
@@ -124,7 +124,7 @@ func TestCreatePoll(t *testing.T) {
 			InputMessage:    Message{Text: "bananas", User: "Balony2", Channel: "coffee3"},
 			InputCaptures:   []string{"", "feedback"},
 			ExpectedError:   false,
-			ExpectedMessage: []byte("Creating a feedback poll. You can cancel the poll any time with `cancel poll amazing`What was the question you wanted to ask?"),
+			ExpectedMessage: []byte("Creating a feedback poll. You can cancel the poll any time with `cancel poll amazing`\nWhat was the question you wanted to ask?"),
 			ExpectedPoll:    Poll{Stage: "initial", Kind: FeedbackPoll},
 		},
 		// Unable to generate poll
@@ -460,5 +460,75 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 		if bytes.Compare(outgoing, testCase.ExpectedRobotMessage) != 0 {
 			t.Error("Expected the robot to say: ", string(testCase.ExpectedRobotMessage), " but got: ", string(outgoing))
 		}
+	}
+}
+
+func TestConversationFlowForResponsePoll(t *testing.T) {
+	robot := CleanSetup()
+	testMessage := Message{
+		User:          "bloop",
+		Channel:       "blarg",
+		Text:          "",
+		DirectMention: true,
+	}
+
+	outgoing := []byte{}
+	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
+		outgoing = append(outgoing, msg.Text...)
+		return nil
+	}
+
+	GenerateUUID = func() string {
+		return "blah"
+	}
+
+	var testMessages = []struct {
+		ExpectedStage  string
+		ExpectedText   []byte
+		NextMsg        string
+		UsePostMessage bool
+	}{
+		{
+			// Stage 1: Initial message that is sent by the user
+			ExpectedStage: "",
+			ExpectedText:  []byte(""),
+			NextMsg:       "create response poll",
+		},
+		{
+			ExpectedStage: "initial",
+			ExpectedText:  []byte("Creating a response poll. You can cancel the poll any time with `cancel poll blah`\nWhat was the question you wanted to ask?"),
+			NextMsg:       "Here is your question",
+		},
+		{
+			ExpectedStage: "getAnswers",
+			ExpectedText:  []byte("What are the possible responses (comma separated)?"),
+			NextMsg:       "Here are my answers",
+		},
+		{
+			ExpectedStage: "getRecipients",
+			ExpectedText:  []byte("Who should we send this to?"),
+			NextMsg:       "<@U123>,<@U12415>",
+		},
+		{
+			ExpectedStage:  "sendPoll",
+			ExpectedText:   []byte(""),
+			NextMsg:        "send it!",
+			UsePostMessage: true,
+		},
+	}
+
+	for _, testStage := range testMessages {
+		poll, _ := FindFirstInactivePollByMessage(&testMessage)
+		if poll.Stage != testStage.ExpectedStage {
+			t.Fatal("Expected stage:", testStage.ExpectedStage, "got:", poll.Stage)
+		}
+
+		if bytes.Compare(outgoing, testStage.ExpectedText) != 0 {
+			t.Fatal("Expected output messages: ", string(testStage.ExpectedText), "got: ", string(outgoing))
+		}
+
+		outgoing = []byte("")
+		testMessage.Text = testStage.NextMsg
+		robot.Dispatch(&testMessage)
 	}
 }

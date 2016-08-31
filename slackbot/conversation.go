@@ -134,9 +134,7 @@ func createPoll(robot *Robot, msg *Message, captureGroups []string) error {
 		return err
 	}
 
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Creating a %s poll. You can cancel the poll any time with `cancel poll %s`", kind, poll.UUID))
-	robot.SendMessage(msg.Channel, "What was the question you wanted to ask?")
-	return nil
+	return robot.SendMessage(msg.Channel, fmt.Sprintf("Creating a %s poll. You can cancel the poll any time with `cancel poll %s`\nWhat was the question you wanted to ask?", kind, poll.UUID))
 }
 
 func answerPoll(robot *Robot, msg *Message, captureGroups []string) error {
@@ -153,8 +151,7 @@ func answerPoll(robot *Robot, msg *Message, captureGroups []string) error {
 		return nil
 	}
 
-	robot.SendMessage(msg.Channel, "Thanks for responding!")
-	return nil
+	return robot.SendMessage(msg.Channel, "Thanks for responding!")
 }
 
 func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
@@ -171,8 +168,7 @@ func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	}
 
 	attachment := poll.SlackPollSummary()
-	robot.PostMessage(msg.Channel, "", attachment)
-	return nil
+	return robot.PostMessage(msg.Channel, "", attachment)
 }
 
 func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
@@ -188,8 +184,7 @@ func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
 		return err
 	}
 
-	robot.SendMessage(msg.Channel, "Okay, cancelling the poll for you")
-	return nil
+	return robot.SendMessage(msg.Channel, "Okay, cancelling the poll for you")
 }
 
 func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
@@ -199,19 +194,16 @@ func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
 	} else {
 		poll.Stage = "getRecipients"
 		if err := GetDB().Save(poll).Error; err != nil {
-			logrus.Error(err)
 			return err
 		}
-		robot.SendMessage(msg.Channel, "Who should we send this to?")
-		return nil
+		return robot.SendMessage(msg.Channel, "Who should we send this to?")
 	}
 
 	if err := GetDB().Save(poll).Error; err != nil {
 		return err
 	}
 
-	robot.SendMessage(msg.Channel, "What are the possible responses (comma separated)?")
-	return nil
+	return robot.SendMessage(msg.Channel, "What are the possible responses (comma separated)?")
 }
 
 func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
@@ -224,10 +216,11 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 
 	poll.PossibleAnswers = answers
 	poll.Stage = "getRecipients"
-	GetDB().Save(poll)
+	if err := poll.Save(); err != nil {
+		return err
+	}
 
-	robot.SendMessage(msg.Channel, "Who should we send this to?")
-	return nil
+	return robot.SendMessage(msg.Channel, "Who should we send this to?")
 }
 
 func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
@@ -245,15 +238,12 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 		robot.SendMessage(msg.Channel, "Error saving the poll. Try again to set the recpients")
 		return err
 	}
-
-	robot.PostMessage(msg.Channel, "Here's a preview of what we are going to send:", poll.SlackPreviewAttachment())
-	return nil
+	return robot.PostMessage(msg.Channel, "Here's a preview of what we are going to send:", poll.SlackPreviewAttachment())
 }
 
 func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 	if msg.Text != "yes" {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
-		return nil
+		return robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
 	}
 
 	poll.Stage = "active"
@@ -265,6 +255,5 @@ func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 		robot.PostMessage(recipient.SlackID, "", poll.SlackRecipientAttachment())
 	}
 
-	robot.SendMessage(msg.Channel, fmt.Sprintf("Poll is live you can check in by asking me to `show poll %s`", poll.UUID))
-	return nil
+	return robot.SendMessage(msg.Channel, fmt.Sprintf("Poll is live you can check in by asking me to `show poll %s`", poll.UUID))
 }
