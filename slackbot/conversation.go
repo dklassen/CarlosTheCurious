@@ -188,22 +188,25 @@ func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
 }
 
 func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
-	poll.Question = msg.Text
-	if strings.Compare(poll.Kind, ResponsePoll) == 0 {
-		poll.Stage = "getAnswers"
-	} else {
-		poll.Stage = "getRecipients"
-		if err := GetDB().Save(poll).Error; err != nil {
-			return err
-		}
-		return robot.SendMessage(msg.Channel, "Who should we send this to?")
+	nextStage := ""
+	response := ""
+
+	switch poll.Kind {
+	case FeedbackPoll:
+		nextStage = "getRecipients"
+		response = "Who should we send this to?"
+	case ResponsePoll:
+		nextStage = "getAnswers"
+		response = "What are the possible responses (comma separated)?"
+	default:
+		logrus.Panic("Unknown kind of poll %s", poll.Kind)
 	}
 
-	if err := GetDB().Save(poll).Error; err != nil {
+	poll.Question = msg.Text
+	if err := poll.TransitionTo(nextStage); err != nil {
 		return err
 	}
-
-	return robot.SendMessage(msg.Channel, "What are the possible responses (comma separated)?")
+	return robot.SendMessage(msg.Channel, response)
 }
 
 func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
