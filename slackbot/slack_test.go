@@ -7,8 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"golang.org/x/net/websocket"
 )
 
 // MockHttpClient so we can capture requests and check we called what
@@ -156,75 +154,5 @@ func TestCommandProcessMessageStripsDirectMentionAndModifiesMessage(t *testing.T
 		if testMsg.DirectMention != testCase.expectedMention {
 			t.Errorf("Expected: '%t' ,but got: '%t'", testCase.expectedMention, testMsg.DirectMention)
 		}
-	}
-}
-
-func TestConversationFlowForResponsePoll(t *testing.T) {
-	robot := CleanSetup()
-	testMessage := Message{
-		User:          "bloop",
-		Channel:       "blarg",
-		Text:          "",
-		DirectMention: true,
-	}
-
-	outgoing := []byte{}
-	sendOverWebsocket = func(conn *websocket.Conn, msg *Message) error {
-		outgoing = append(outgoing, msg.Text...)
-		return nil
-	}
-
-	GenerateUUID = func() string {
-		return "blah"
-	}
-
-	var testMessages = []struct {
-		ExpectedStage  string
-		ExpectedText   []byte
-		NextMsg        string
-		UsePostMessage bool
-	}{
-		{
-			// Stage 1: Initial message that is sent by the user
-			ExpectedStage: "",
-			ExpectedText:  []byte(""),
-			NextMsg:       "create response poll",
-		},
-		{
-			ExpectedStage: "initial",
-			ExpectedText:  []byte("Creating a response poll. You can cancel the poll any time with `cancel poll blah`What was the question you wanted to ask?"),
-			NextMsg:       "Here is your question",
-		},
-		{
-			ExpectedStage: "getAnswers",
-			ExpectedText:  []byte("What are the possible responses (comma separated)?"),
-			NextMsg:       "Here are my answers",
-		},
-		{
-			ExpectedStage: "getRecipients",
-			ExpectedText:  []byte("Who should we send this to?"),
-			NextMsg:       "<@U123>,<@U12415>",
-		},
-		{
-			ExpectedStage:  "sendPoll",
-			ExpectedText:   []byte(""),
-			NextMsg:        "send it!",
-			UsePostMessage: true,
-		},
-	}
-
-	for _, testStage := range testMessages {
-		poll, _ := FindFirstInactivePollByMessage(&testMessage)
-		if poll.Stage != testStage.ExpectedStage {
-			t.Fatal("Expected stage:", testStage.ExpectedStage, "got:", poll.Stage)
-		}
-
-		if bytes.Compare(outgoing, testStage.ExpectedText) != 0 {
-			t.Fatal("Expected output messages: ", string(testStage.ExpectedText), "got: ", string(outgoing))
-		}
-
-		outgoing = []byte("")
-		testMessage.Text = testStage.NextMsg
-		robot.Dispatch(&testMessage)
 	}
 }

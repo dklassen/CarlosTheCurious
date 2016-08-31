@@ -2,6 +2,7 @@ package slackbot
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -361,26 +362,32 @@ func (robot Robot) SendMessage(channel, msg string) (err error) {
 	return sendOverWebsocket(robot.Connection, message)
 }
 
-func (robot Robot) PostMessage(channel, msg string, attachment Attachment) {
+func (robot Robot) PostMessage(channel, msg string, attachment Attachment) error {
 	attachments := []Attachment{attachment}
 	resp, err := sendViaRPC(robot.Client, robot.APIToken, channel, msg, attachments)
 	if err != nil {
 		logrus.Error("Error posting to slack api: ", err)
+		return err
 	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Error(err)
+		return err
 	}
+
 	var postResponse PostResponse
 
 	err = json.Unmarshal(body, &postResponse)
 	if err != nil {
-		logrus.Error("Unable to decode json response from post endpoint: ", err)
+		return err
 	}
+
 	if !postResponse.Ok {
-		logrus.Error("Error posting message: ", postResponse.Error)
+		return errors.New(postResponse.Error)
 	}
+
+	return nil
 }
 
 func (robot Robot) RegisterCommands(cmds map[string]HandlerFunc) {
