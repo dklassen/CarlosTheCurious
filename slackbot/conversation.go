@@ -19,12 +19,12 @@ var (
 	}
 
 	registeredCommands = map[string]HandlerFunc{
-		"^show poll (.*)$":                     showPoll,
-		"^create ([a-zA-Z]+) poll$":            createPoll,
-		"^cancel poll ([a-zA-Z-0-9-_]+)$":      cancelPoll,
-		"^answer poll ([a-zA-Z-0-9-_]+) (.*$)": answerPoll,
-		"^list active polls$":                  activePolls,
-		"^help":                                usage,
+		"^[sS]how poll (.*)$":                     showPoll,
+		"^[cC]reate ([a-zA-Z]+) poll$":            createPoll,
+		"^[cC]ancel poll ([a-zA-Z-0-9-_]+)$":      cancelPoll,
+		"^[aA]nswer poll ([a-zA-Z-0-9-_]+) (.*$)": answerPoll,
+		"^[lL]ist active polls$":                  activePolls,
+		"^[hH]elp":                                usage,
 	}
 )
 
