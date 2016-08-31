@@ -71,6 +71,7 @@ func NewPoll(kind, creator, channel string) *Poll {
 		Kind:            kind,
 		Creator:         creator,
 		Channel:         channel,
+		PreviousStage:   "initial",
 		Stage:           "initial",
 		PossibleAnswers: []PossibleAnswer{},
 	}
