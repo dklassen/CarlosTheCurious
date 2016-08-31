@@ -86,8 +86,7 @@ text.
 
 *'help'* - Display the help but you already knew that
 `
-	robot.SendMessage(msg.Channel, usage)
-	return nil
+	return robot.SendMessage(msg.Channel, usage)
 }
 
 func activePolls(robot *Robot, msg *Message, captures []string) (err error) {

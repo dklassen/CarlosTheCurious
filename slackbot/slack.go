@@ -136,8 +136,6 @@ type Robot struct {
 	Users      map[string]User
 	Client     WebClienter // http.Client
 	Handler    *MessageHandler
-	SendChan   chan Message
-	Shutdown   chan int
 	Channels   map[string]Channel
 	Groups     map[string]Group
 	Connection *websocket.Conn
@@ -285,8 +283,7 @@ func NewRobot(origin, token string) *Robot {
 		APIToken:   token,
 		Handler:    defaultMessageHandler,
 		Client:     &SlackWebClient{HTTPClient: &http.Client{}},
-		ListenChan: make(chan Message), SendChan: make(chan Message),
-		Shutdown: make(chan int),
+		ListenChan: make(chan Message, 10),
 	}
 }
 
@@ -344,11 +341,14 @@ func (robot *Robot) Listen() {
 			if err != nil {
 				logrus.Error("Error receiving over websocket: ", err.Error())
 			}
+
+			if !msg.isMessage() {
+				continue
+			}
+
 			robot.ListenChan <- *msg
 		}
 	}()
-
-	return
 }
 
 func (robot Robot) SendMessage(channel, msg string) (err error) {
@@ -441,10 +441,6 @@ func (robot *Robot) Dispatch(msg *Message) {
 }
 
 func (robot Robot) ProcessMessage(msg *Message) {
-	if msg.isMessage() != true {
-		return
-	}
-
 	if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
 		msg.DirectMention = true
 		msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
@@ -535,25 +531,33 @@ func HerokuPing() {
 	}
 }
 
-func (robot Robot) Run() {
+func MessageWorker(robot *Robot) {
+	for msg := range robot.ListenChan {
+		robot.ProcessMessage(&msg)
+	}
+}
+
+func Run(origin, apiToken string, workers int) {
 	if os.Getenv("PLATFORM") == "HEROKU" {
+		logrus.Info("Heroku Platform detected running webserver and keepalive status ping")
 		go HerokuServer()
 		go HerokuPing()
 	}
 
+	robot := NewRobot(origin, apiToken)
 	robot.SlackConnect()
 	robot.DownloadUsersMap()
 	robot.Listen()
 	robot.RegisterCommands(registeredCommands)
 	logrus.Info("Ready and waiting for messages")
 
+	for w := 0; w < workers; w++ {
+		go MessageWorker(robot)
+	}
+
 	checkInterval := time.NewTicker(time.Duration(12) * time.Hour)
 	for {
 		select {
-		case msg := <-robot.ListenChan:
-			robot.ProcessMessage(&msg)
-		case <-robot.Shutdown:
-			return
 		case <-checkInterval.C:
 			go robot.DownloadUsersMap()
 		}
