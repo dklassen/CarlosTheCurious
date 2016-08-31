@@ -26,6 +26,12 @@ type Poll struct {
 	// The creation stage the poll is in initial -> getQuestion -> getRecipient -> Active -> Cancelled or Archived
 	Stage string
 
+	// The stage that proceeded the current stage.
+	// NOTE:: This is a bit of a hack since I feel like a separate state change table or log would be a better solution
+	// for tracking state changing history. For now we only need to action on the previous state transition
+	// for instance moving from getAnswers -> paused and than continuing
+	PreviousStage string
+
 	// Represents the kind of poll this is. Feedback or Response. Feedback polls as for free text responses, while reponse polls
 	// take a list of possible responses
 	Kind string `gorm:"not null"`
@@ -65,6 +71,7 @@ func NewPoll(kind, creator, channel string) *Poll {
 		Kind:            kind,
 		Creator:         creator,
 		Channel:         channel,
+		PreviousStage:   "initial",
 		Stage:           "initial",
 		PossibleAnswers: []PossibleAnswer{},
 	}
@@ -72,6 +79,12 @@ func NewPoll(kind, creator, channel string) *Poll {
 
 func (poll *Poll) Save() error {
 	return GetDB().Save(&poll).Error
+}
+
+func (poll *Poll) TransitionTo(nextStage string) error {
+	poll.PreviousStage = poll.Stage
+	poll.Stage = nextStage
+	return poll.Save()
 }
 
 func (poll *Poll) AddRecipient(recipient Recipient) error {
@@ -84,6 +97,12 @@ func (poll *Poll) AddRecipient(recipient Recipient) error {
 func (poll *Poll) SetRecipients(recipients []Recipient) error {
 	poll.Recipients = recipients
 	return poll.Save()
+}
+
+func (poll *Poll) GetRecipients() ([]Recipient, error) {
+	recipients := []Recipient{}
+	err := GetDB().Model(poll).Related(&recipients).Error
+	return recipients, err
 }
 
 func FindFirstPollByStage(name, stage string) *Poll {

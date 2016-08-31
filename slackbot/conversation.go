@@ -188,22 +188,25 @@ func cancelPoll(robot *Robot, msg *Message, captureGroups []string) error {
 }
 
 func getQuestion(robot *Robot, msg *Message, poll *Poll) error {
-	poll.Question = msg.Text
-	if strings.Compare(poll.Kind, ResponsePoll) == 0 {
-		poll.Stage = "getAnswers"
-	} else {
-		poll.Stage = "getRecipients"
-		if err := GetDB().Save(poll).Error; err != nil {
-			return err
-		}
-		return robot.SendMessage(msg.Channel, "Who should we send this to?")
+	nextStage := ""
+	response := ""
+
+	switch poll.Kind {
+	case FeedbackPoll:
+		nextStage = "getRecipients"
+		response = "Who should we send this to?"
+	case ResponsePoll:
+		nextStage = "getAnswers"
+		response = "What are the possible responses (comma separated)?"
+	default:
+		logrus.Panic("Unknown kind of poll %s", poll.Kind)
 	}
 
-	if err := GetDB().Save(poll).Error; err != nil {
+	poll.Question = msg.Text
+	if err := poll.TransitionTo(nextStage); err != nil {
 		return err
 	}
-
-	return robot.SendMessage(msg.Channel, "What are the possible responses (comma separated)?")
+	return robot.SendMessage(msg.Channel, response)
 }
 
 func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
@@ -215,8 +218,7 @@ func getAnswers(robot *Robot, msg *Message, poll *Poll) error {
 	}
 
 	poll.PossibleAnswers = answers
-	poll.Stage = "getRecipients"
-	if err := poll.Save(); err != nil {
+	if err := poll.TransitionTo("getRecipients"); err != nil {
 		return err
 	}
 
@@ -227,14 +229,11 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 	recipients := parseRecpientsText(robot, *msg)
 
 	if err := poll.SetRecipients(recipients); err != nil {
-		logrus.Error("Unable to set recipients", err)
 		robot.SendMessage(msg.Channel, "Had trouble setting the recipients. Make sure they are valid channel names and try again")
 		return err
 	}
 
-	poll.Stage = "sendPoll"
-	if err := poll.Save(); err != nil {
-		logrus.Error("Unable to save poll", err)
+	if err := poll.TransitionTo("sendPoll"); err != nil {
 		robot.SendMessage(msg.Channel, "Error saving the poll. Try again to set the recpients")
 		return err
 	}
@@ -246,11 +245,16 @@ func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
 		return robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
 	}
 
-	poll.Stage = "active"
-	GetDB().Save(poll)
+	if err := poll.TransitionTo("active"); err != nil {
+		return err
+	}
 
-	recipients := []Recipient{}
-	GetDB().Model(&poll).Related(&recipients)
+	recipients, err := poll.GetRecipients()
+	if err != nil {
+		robot.SendMessage(msg.Channel, "hummmmm something seems to be wrong with getting the list of recipients")
+		return err
+	}
+
 	for _, recipient := range recipients {
 		robot.PostMessage(recipient.SlackID, "", poll.SlackRecipientAttachment())
 	}

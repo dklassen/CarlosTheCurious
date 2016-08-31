@@ -5,6 +5,19 @@ import (
 	"testing"
 )
 
+func TestTransitionTo(t *testing.T) {
+	SetupTestDatabase()
+	poll := &Poll{Stage: "stage1", UUID: "1"}
+	poll.TransitionTo("stage2")
+	if strings.Compare(poll.Stage, "stage2") != 0 {
+		t.Fatal("expecting poll to be in stage: stage2, but got:", poll.Stage)
+	}
+
+	if strings.Compare(poll.PreviousStage, "stage1") != 0 {
+		t.Fatal("expecting poll to be in stage: stage1, but got:", poll.Stage)
+	}
+}
+
 func TestSlackPreviewAttachments(t *testing.T) {
 	SetupTestDatabase()
 	var testingTable = []struct {
