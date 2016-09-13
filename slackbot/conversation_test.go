@@ -2,11 +2,18 @@ package slackbot
 
 import (
 	"bytes"
+	"sort"
 	"strings"
 	"testing"
 
 	"golang.org/x/net/websocket"
 )
+
+type BySlackID []Recipient
+
+func (a BySlackID) Len() int           { return len(a) }
+func (a BySlackID) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a BySlackID) Less(i, j int) bool { return a[i].SlackID < a[j].SlackID }
 
 func TestParseRecipientsText(t *testing.T) {
 	robot := CleanSetup()
@@ -43,6 +50,9 @@ func TestParseRecipientsText(t *testing.T) {
 	for _, test := range tests {
 		robot.Channels = test.InputChannels
 		result := parseRecpientsText(&robot, test.Input)
+		sort.Sort(BySlackID(result))
+		sort.Sort(BySlackID(test.Expected))
+
 		if len(result) != len(test.Expected) {
 			t.Fatal("Expected:", len(test.Expected), "recipients got:", len(result))
 		}
@@ -71,9 +81,6 @@ func TestSlackIDRegex(t *testing.T) {
 		{
 			TestMsg:  "<U12341>",
 			Expected: []string{},
-		}, {
-			TestMsg:  "<#C1U41SHTK>",
-			Expected: []string{"<#C1U41SHTK>", "C1U41SHTK"},
 		},
 	}
 
