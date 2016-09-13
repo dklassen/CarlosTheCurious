@@ -10,8 +10,9 @@ import (
 )
 
 var (
-	slackIDRegex = regexp.MustCompile("<(?:@|#)([a-zA-Z0-9]+)>")
-	stageLookup  = map[string]Stage{
+	slackIDRegex            = regexp.MustCompile("<@([a-zA-Z0-9]+)>")
+	slackPublicGroupIDRegex = regexp.MustCompile("<#([a-zA-Z0-9]+)[|]{1}[a-zA-Z0-9]+>")
+	stageLookup             = map[string]Stage{
 		"initial":       getQuestion,
 		"getAnswers":    getAnswers,
 		"getRecipients": getRecipients,
@@ -28,11 +29,10 @@ var (
 	}
 )
 
-func parseRecpientsText(robot *Robot, msg Message) []Recipient {
-	recipients := make(map[string]Recipient)
+func findChannels(robot *Robot, msg Message) []Recipient {
+	recipients := []Recipient{}
 
-	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		logrus.Info(match)
+	for _, match := range slackPublicGroupIDRegex.FindAllStringSubmatch(msg.Text, -1) {
 		id := SlackID{Value: match[1]}
 
 		switch id.Kind() {
@@ -43,23 +43,49 @@ func parseRecpientsText(robot *Robot, msg Message) []Recipient {
 			} else {
 				for _, r := range channel.Members {
 					recipient := Recipient{SlackID: r}
-					recipients[recipient.SlackID] = recipient
+					recipients = append(recipients, recipient)
 				}
 			}
-		case UserID:
-			recipient := Recipient{SlackID: id.Value}
-			recipients[recipient.SlackID] = recipient
 		default:
 			logrus.Error("Unable to identify slackID ", id.Value)
 		}
 	}
+	return recipients
+}
 
-	// NOTE(dana) is there a nicer way to get the values from a map?
+func findUsers(msg Message) []Recipient {
+	recipients := []Recipient{}
+	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
+		logrus.Info(match)
+		id := SlackID{Value: match[1]}
+
+		switch id.Kind() {
+		case UserID:
+			recipient := Recipient{SlackID: id.Value}
+			recipients = append(recipients, recipient)
+		default:
+			logrus.Error("Unable to identify slackID ", id.Value)
+		}
+	}
+	return recipients
+}
+
+func parseRecpientsText(robot *Robot, msg Message) []Recipient {
+
 	recipientList := []Recipient{}
+	recipientList = append(recipientList, findChannels(robot, msg)...)
+	recipientList = append(recipientList, findUsers(msg)...)
+
+	recipients := make(map[string]Recipient)
+	for _, v := range recipientList {
+		recipients[v.SlackID] = v
+	}
+
+	// NOTE::(dana) for fucks sake what are you thinking?!
+	recipientList = []Recipient{}
 	for _, v := range recipients {
 		recipientList = append(recipientList, v)
 	}
-
 	return recipientList
 }
 
