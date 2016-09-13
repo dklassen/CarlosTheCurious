@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	slackIDRegex = regexp.MustCompile("<(?:@|#)([a-zA-Z0-9]+)>")
+	slackIDRegex = regexp.MustCompile("<(?:@|#)([a-zA-Z0-9]+)([|]{1}[a-zA-Z0-9]+)?>")
 	stageLookup  = map[string]Stage{
 		"initial":       getQuestion,
 		"getAnswers":    getAnswers,

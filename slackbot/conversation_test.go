@@ -28,9 +28,9 @@ func TestParseRecipientsText(t *testing.T) {
 		},
 		{
 			// Identify a single user and a channel with multiple users
-			Input: Message{Text: "<@UDF123> and <@CUSDF12>"},
+			Input: Message{Text: "<@UDF123> and <#C1U41SHTK|general>"},
 			InputChannels: map[string]Channel{
-				"CUSDF12": Channel{Members: []string{"derp1", "derp2"}},
+				"C1U41SHTK": Channel{Members: []string{"derp1", "derp2"}},
 			},
 			Expected: []Recipient{
 				{SlackID: "UDF123"},
