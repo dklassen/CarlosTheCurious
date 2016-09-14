@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func TestNewRecipient(t *testing.T) {
+	var testingTable = []struct {
+		Input    string
+		Expected *Recipient
+	}{
+		{
+			Input:    "U123",
+			Expected: &Recipient{SlackID: "U123"},
+		},
+		{
+			Input:    "C123",
+			Expected: &Recipient{},
+		},
+	}
+
+	for _, test := range testingTable {
+		result, _ := NewRecipient(test.Input)
+		output := test.Expected
+
+		if strings.Compare(result.SlackID, output.SlackID) != 0 {
+			t.Fatal("Expected", output.SlackID, "got", result.SlackID)
+		}
+	}
+
+}
+
 func TestTransitionTo(t *testing.T) {
 	SetupTestDatabase()
 	poll := &Poll{Stage: "stage1", UUID: "1"}
