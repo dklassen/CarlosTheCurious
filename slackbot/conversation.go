@@ -262,7 +262,7 @@ func getRecipients(robot *Robot, msg *Message, poll *Poll) error {
 }
 
 func sendPoll(robot *Robot, msg *Message, poll *Poll) error {
-	if msg.Text != "yes" {
+	if !strings.EqualFold(msg.Text, "yes") {
 		return robot.SendMessage(msg.Channel, fmt.Sprintf("Okay not going to send poll. You can cancel with `cancel poll %s`", poll.UUID))
 	}
 
