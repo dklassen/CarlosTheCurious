@@ -36,8 +36,8 @@ type SlackID struct {
 
 type SlackIDType int
 
-func (id *SlackID) Kind() SlackIDType {
-	switch string(id.Value[0]) {
+func TypeOfSlackID(id string) SlackIDType {
+	switch string(id[0]) {
 	case "G":
 		return GroupChannelID
 	case "C":
@@ -45,7 +45,6 @@ func (id *SlackID) Kind() SlackIDType {
 	case "U":
 		return UserID
 	default:
-		logrus.Error("Unable to identify the kind of channel from id:", id.Value)
 		return UnknownID
 	}
 }

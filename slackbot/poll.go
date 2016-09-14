@@ -64,6 +64,15 @@ type Recipient struct {
 	SlackName string
 }
 
+func NewRecipient(id string) (*Recipient, error) {
+	idType := TypeOfSlackID(id)
+	if idType != UserID {
+		return nil, fmt.Errorf("A recipient must be ae user id not ", id)
+	}
+
+	return &Recipient{SlackID: id}, nil
+}
+
 func NewPoll(kind, creator, channel string) *Poll {
 	uuid := GenerateUUID()
 	return &Poll{

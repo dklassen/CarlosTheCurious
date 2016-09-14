@@ -33,21 +33,19 @@ func findChannels(robot *Robot, msg Message) []Recipient {
 	recipients := []Recipient{}
 
 	for _, match := range slackPublicGroupIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		id := SlackID{Value: match[1]}
-
-		switch id.Kind() {
-		case PublicChannelID:
-			channel, ok := robot.Channels[id.Value]
-			if !ok {
-				logrus.Error("Unable to find channel with id: ", id.Value)
-			} else {
-				for _, r := range channel.Members {
-					recipient := Recipient{SlackID: r}
-					recipients = append(recipients, recipient)
+		id := match[1]
+		channel, ok := robot.Channels[id]
+		if !ok {
+			logrus.Error("Unable to find channel with id: ", id)
+		} else {
+			for _, r := range channel.Members {
+				recipient, err := NewRecipient(r)
+				if err != nil {
+					logrus.Error(err)
+					continue
 				}
+				recipients = append(recipients, *recipient)
 			}
-		default:
-			logrus.Error("Unable to identify slackID ", id.Value)
 		}
 	}
 	return recipients
@@ -56,16 +54,13 @@ func findChannels(robot *Robot, msg Message) []Recipient {
 func findUsers(msg Message) []Recipient {
 	recipients := []Recipient{}
 	for _, match := range slackIDRegex.FindAllStringSubmatch(msg.Text, -1) {
-		logrus.Info(match)
-		id := SlackID{Value: match[1]}
-
-		switch id.Kind() {
-		case UserID:
-			recipient := Recipient{SlackID: id.Value}
-			recipients = append(recipients, recipient)
-		default:
-			logrus.Error("Unable to identify slackID ", id.Value)
+		recipient, err := NewRecipient(match[1])
+		if err != nil {
+			logrus.Error(err)
+			continue
 		}
+
+		recipients = append(recipients, *recipient)
 	}
 	return recipients
 }
