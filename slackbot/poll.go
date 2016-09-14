@@ -67,7 +67,7 @@ type Recipient struct {
 func NewRecipient(id string) (*Recipient, error) {
 	idType := TypeOfSlackID(id)
 	if idType != UserID {
-		return nil, fmt.Errorf("A recipient must be a user id not ", id)
+		return nil, errors.New(fmt.Sprintf("A recipient must be a user id not ", id))
 	}
 
 	return &Recipient{SlackID: id}, nil
