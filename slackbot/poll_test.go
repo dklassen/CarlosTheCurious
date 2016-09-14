@@ -5,6 +5,40 @@ import (
 	"testing"
 )
 
+func TestNewRecipient(t *testing.T) {
+	var testingTable = []struct {
+		Input         string
+		Expected      *Recipient
+		ExpectedError bool
+	}{
+		{
+			Input:         "U123",
+			Expected:      &Recipient{SlackID: "U123"},
+			ExpectedError: false,
+		},
+		{
+			Input:         "C123",
+			Expected:      &Recipient{},
+			ExpectedError: true,
+		},
+	}
+
+	for _, test := range testingTable {
+		result, err := NewRecipient(test.Input)
+		output := test.Expected
+
+		if test.ExpectedError && err == nil {
+			t.Fatal("Expected error", err)
+		} else {
+			continue
+		}
+
+		if strings.Compare(result.SlackID, output.SlackID) != 0 {
+			t.Fatal("Expected", output.SlackID, "got", result.SlackID)
+		}
+	}
+}
+
 func TestTransitionTo(t *testing.T) {
 	SetupTestDatabase()
 	poll := &Poll{Stage: "stage1", UUID: "1"}
