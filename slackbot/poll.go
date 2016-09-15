@@ -3,6 +3,7 @@ package slackbot
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jinzhu/gorm"
 )
@@ -275,15 +276,16 @@ func (poll *Poll) SlackPollSummary() Attachment {
 func (poll *Poll) SlackPreviewAttachment() Attachment {
 	attachments := []AttachmentField{}
 
-	attachments = append(attachments, pollTypeField(poll))
 	attachments = append(attachments, recipientsField(poll))
 
 	if poll.Kind == "response" {
 		attachments = append(attachments, possibleAnswerField(poll))
 	}
 
+	title := fmt.Sprintf("%s Question:", strings.Title(poll.Kind))
+
 	return Attachment{
-		Title:   poll.UUID,
+		Title:   title,
 		Pretext: "Look good to you (yes/no)?",
 		Text:    poll.Question,
 		Fields:  attachments,

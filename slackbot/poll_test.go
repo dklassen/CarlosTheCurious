@@ -62,7 +62,7 @@ func TestSlackPreviewAttachments(t *testing.T) {
 			// A perfect poll and attachment combo which expects all the fields
 			// and no trouble
 			Input: &Poll{
-				Kind:     "response",
+				Kind:     ResponsePoll,
 				UUID:     "1",
 				Question: "The pig is in the pudding",
 				Recipients: []Recipient{
@@ -74,15 +74,10 @@ func TestSlackPreviewAttachments(t *testing.T) {
 					PossibleAnswer{Value: "2"},
 				},
 			}, Expected: Attachment{
-				Title:   "1",
+				Title:   "Response Question:",
 				Pretext: "Look good to you (yes/no)?",
 				Text:    "The pig is in the pudding",
 				Fields: []AttachmentField{
-					AttachmentField{
-						Title: "Poll Type:",
-						Value: "response",
-						Short: true,
-					},
 					AttachmentField{
 						Title: "# of Recipients:",
 						Value: "2",
@@ -92,6 +87,29 @@ func TestSlackPreviewAttachments(t *testing.T) {
 						Title: "Possible Answers:",
 						Value: "1, 2",
 						Short: false,
+					},
+				},
+			},
+		},
+		{
+			// Expected feedback poll
+			Input: &Poll{
+				Kind:     FeedbackPoll,
+				UUID:     "2",
+				Question: "The pig is in the pudding",
+				Recipients: []Recipient{
+					Recipient{SlackID: "derp", SlackName: "oh ya"},
+					Recipient{SlackID: "derp2", SlackName: "oh ya"},
+				},
+			}, Expected: Attachment{
+				Title:   "Feedback Question:",
+				Pretext: "Look good to you (yes/no)?",
+				Text:    "The pig is in the pudding",
+				Fields: []AttachmentField{
+					AttachmentField{
+						Title: "# of Recipients:",
+						Value: "2",
+						Short: true,
 					},
 				},
 			},
