@@ -174,10 +174,15 @@ func TestResponseSummaryField(t *testing.T) {
 		ExpectedAttachment string
 	}{
 		{
-			Poll:               Poll{Kind: "response", Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "derp"}}},
+			Poll:               Poll{UUID: "1", Kind: "response", Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "derp"}}},
 			ExpectedAttachment: "100% - 1 out of 1",
 		},
+		{
+			Poll:               Poll{UUID: "2", Kind: "response", Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "U125"}, {SlackID: "U123"}}},
+			ExpectedAttachment: "50% - 1 out of 2",
+		},
 	}
+
 	for _, testCase := range testCases {
 		GetDB().Save(&testCase.Poll)
 		output := responseSummaryField(&testCase.Poll)
