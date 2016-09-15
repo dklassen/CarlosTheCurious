@@ -449,7 +449,7 @@ func (robot *Robot) Dispatch(msg *Message) {
 func (robot Robot) ProcessMessage(msg *Message) {
 	if strings.HasPrefix(msg.Text, "<@"+robot.ID+">") {
 		msg.DirectMention = true
-		msg.Text = strings.Replace(msg.Text, robot.SlackIDString()+":", "", -1)
+		msg.Text = strings.Replace(msg.Text, robot.SlackIDString(), "", -1)
 		msg.Text = strings.Trim(msg.Text, " ")
 	}
 

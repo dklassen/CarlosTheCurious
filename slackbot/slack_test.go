@@ -136,7 +136,7 @@ func TestCommandProcessMessageStripsDirectMentionAndModifiesMessage(t *testing.T
 			expectedMention: false},
 		{
 			Type:            "message",
-			Text:            "<@1>: the fox and the fields of brown",
+			Text:            "<@1> the fox and the fields of brown",
 			expectedText:    "the fox and the fields of brown",
 			expectedMention: true},
 	}
