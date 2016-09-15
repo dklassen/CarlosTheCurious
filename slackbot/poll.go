@@ -221,11 +221,11 @@ func (poll *Poll) slackAnswerString() string {
 func responseSummaryField(poll *Poll) AttachmentField {
 	total := poll.numberOfRecipients()
 	responded := poll.numberOfResponses()
-	responseRatio := (responded / total) * 100
+	responseRatio := (float64(responded) / float64(total)) * 100
 
 	return AttachmentField{
 		Title: "Response Stats:",
-		Value: fmt.Sprintf("%d%% - %d out of %d", responseRatio, responded, total),
+		Value: fmt.Sprintf("%d%% - %d out of %d", int(responseRatio), responded, total),
 		Short: false,
 	}
 }
