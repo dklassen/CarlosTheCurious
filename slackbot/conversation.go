@@ -32,12 +32,16 @@ var (
 func findChannels(robot *Robot, msg Message) []Recipient {
 	recipients := []Recipient{}
 
+	logrus.Info("From text:", msg.Text)
 	for _, match := range slackPublicGroupIDRegex.FindAllStringSubmatch(msg.Text, -1) {
 		id := match[1]
 		channel, ok := robot.Channels[id]
 		if !ok {
 			logrus.Error("Unable to find channel with id: ", id)
 		} else {
+			logrus.Info("Found id :", id)
+			logrus.Info("With members", channel.Members)
+
 			for _, r := range channel.Members {
 				recipient, err := NewRecipient(r)
 				if err != nil {
@@ -66,7 +70,6 @@ func findUsers(msg Message) []Recipient {
 }
 
 func parseRecpientsText(robot *Robot, msg Message) []Recipient {
-
 	recipientList := []Recipient{}
 	recipientList = append(recipientList, findChannels(robot, msg)...)
 	recipientList = append(recipientList, findUsers(msg)...)
