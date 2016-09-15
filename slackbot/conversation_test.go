@@ -35,7 +35,7 @@ func TestParseRecipientsText(t *testing.T) {
 		},
 		{
 			// Identify a single user and a channel with multiple users
-			Input: Message{Text: "<@UDF123> and <#C1U41SHTK|general>"},
+			Input: Message{Text: "<@UDF123> and <#C1U41SHTK|general-1>"},
 			InputChannels: map[string]Channel{
 				"C1U41SHTK": Channel{Members: []string{"Uderp1", "Uderp2"}},
 			},
