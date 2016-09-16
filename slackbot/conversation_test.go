@@ -432,7 +432,7 @@ func TestAnswerPollSavesResponse(t *testing.T) {
 	}{
 		// Perfect case where the responder is able to save the response to the recipient
 		{
-			InputPoll:            Poll{Kind: "response", UUID: "1", Channel: "dorp", Creator: "Merv", Stage: "active", Recipients: []Recipient{{SlackID: "1234"}}},
+			InputPoll:            Poll{Kind: "response", UUID: "1", Channel: "dorp", Creator: "Merv", Stage: "active", PossibleAnswers: []PossibleAnswer{{Value: "Why do we not get ice cream on thursdays?"}}, Recipients: []Recipient{{SlackID: "1234"}}},
 			InputMsg:             Message{User: "1234", Channel: "Private_Channel"},
 			InputCaptures:        []string{"everything", "1", "Why do we not get ice cream on thursdays?"},
 			ExpectedSuccess:      true,
