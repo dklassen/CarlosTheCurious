@@ -254,10 +254,32 @@ func pollTypeField(poll *Poll) AttachmentField {
 	}
 }
 
+func (poll *Poll) SlackPollResultsAttachment() Attachment {
+	attachments := []AttachmentField{}
+	attachments = append(attachments, responseSummaryField(poll))
+
+	responses, err := poll.GetResponses()
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	results := "Question:\n"
+	results += poll.Question + "\n\n"
+	results += "Responses:"
+	for _, resp := range responses {
+		results += "\n" + resp.Value
+	}
+
+	return Attachment{
+		Color:  "#36a64f",
+		Title:  "Survey Results",
+		Text:   results,
+		Fields: attachments,
+	}
+}
+
 func (poll *Poll) SlackPollSummary() Attachment {
 	attachments := []AttachmentField{}
-
-	attachments = append(attachments, pollTypeField(poll))
 
 	if poll.Kind == ResponsePoll {
 		attachments = append(attachments, possibleAnswerField(poll))
