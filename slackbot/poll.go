@@ -142,6 +142,10 @@ func ValidResponse(response string) bool {
 }
 
 func (p *Poll) AddResponse(userID, responseValue string) error {
+	if p.Kind == ResponsePoll && !ValidResponse(responseValue) {
+		return errors.New(fmt.Sprintf("Invalid response %s", responseValue))
+	}
+
 	response := PollResponse{Value: responseValue, SlackID: userID}
 	return GetDB().Model(p).Association("Responses").Append(response).Error
 }
