@@ -277,7 +277,11 @@ func pollTypeField(poll *Poll) AttachmentField {
 func feedbackResponseField(responses []PollResponse) *AttachmentField {
 	results := ""
 	for i, resp := range responses {
-		results += fmt.Sprintf("%d \n", i+1) + resp.Value
+		if i == 0 {
+			results += fmt.Sprintf(" %d.", i+1) + resp.Value
+		} else {
+			results += fmt.Sprintf("\n %d.", i+1) + resp.Value
+		}
 	}
 
 	return &AttachmentField{
