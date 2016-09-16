@@ -238,12 +238,12 @@ func (poll *Poll) slackAnswerString() string {
 	return answerString
 }
 
-func responseSummaryField(poll *Poll) AttachmentField {
+func responseSummaryField(poll *Poll) *AttachmentField {
 	total := poll.numberOfRecipients()
 	responded := poll.numberOfResponses()
 	responseRatio := (float64(responded) / float64(total)) * 100
 
-	return AttachmentField{
+	return &AttachmentField{
 		Title: "Response Stats:",
 		Value: fmt.Sprintf("%d%% - %d out of %d", int(responseRatio), responded, total),
 		Short: false,
@@ -275,9 +275,9 @@ func pollTypeField(poll *Poll) AttachmentField {
 }
 
 func feedbackResponseField(responses []PollResponse) *AttachmentField {
-	results := "Responses:\n"
+	results := ""
 	for i, resp := range responses {
-		results += fmt.Sprintf("\n %d. ", i+1) + resp.Value
+		results += fmt.Sprintf("%d \n", i+1) + resp.Value
 	}
 
 	return &AttachmentField{
@@ -333,9 +333,6 @@ func responseField(poll *Poll) *AttachmentField {
 func (poll *Poll) SlackPollSummary() Attachment {
 	attachments := []AttachmentField{}
 
-	results := "Question:\n"
-	results += poll.Question + "\n\n"
-
 	if poll.Kind == ResponsePoll {
 		attachments = append(attachments, *responseField(poll))
 	} else {
@@ -346,10 +343,12 @@ func (poll *Poll) SlackPollSummary() Attachment {
 		attachments = append(attachments, *feedbackResponseField(responses))
 	}
 
+	attachments = append(attachments, *responseSummaryField(poll))
+
 	return Attachment{
 		Color:  "#36a64f",
 		Title:  "Survey Results",
-		Text:   results,
+		Text:   poll.Question + "\n\n",
 		Fields: attachments,
 	}
 }
