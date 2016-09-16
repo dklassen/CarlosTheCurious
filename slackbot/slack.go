@@ -156,10 +156,12 @@ type Message struct {
 }
 
 type Attachment struct {
-	Title   string            `json:"title"`
-	Text    string            `json:"text"`
-	Pretext string            `json:"pretext"`
-	Fields  []AttachmentField `json:"fields"`
+	Title    string            `json:"title"`
+	Text     string            `json:"text"`
+	Fallback string            `json:"fallback"`
+	Color    string            `json:"color"`
+	Pretext  string            `json:"pretext"`
+	Fields   []AttachmentField `json:"fields"`
 }
 
 type AttachmentField struct {
