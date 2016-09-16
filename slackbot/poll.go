@@ -267,8 +267,8 @@ func (poll *Poll) SlackPollResultsAttachment() Attachment {
 	results := "Question:\n"
 	results += poll.Question + "\n\n"
 	results += "Responses:"
-	for _, resp := range responses {
-		results += "\n" + resp.Value
+	for i, resp := range responses {
+		results += fmt.Sprintf("\n %d. ", i+1) + resp.Value
 	}
 
 	return Attachment{
