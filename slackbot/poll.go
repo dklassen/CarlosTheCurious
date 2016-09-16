@@ -125,6 +125,22 @@ func FindFirstPollByStage(name, stage string) *Poll {
 	return poll
 }
 
+func ValidResponse(response string) bool {
+	rows, _ := GetDB().Raw("select 1 from possible_answers where value = ?", response).Rows()
+
+	defer rows.Close()
+	var count int
+
+	for rows.Next() {
+		rows.Scan(&count)
+	}
+
+	if count == 0 {
+		return false
+	}
+	return true
+}
+
 func (p *Poll) AddResponse(userID, responseValue string) error {
 	response := PollResponse{Value: responseValue, SlackID: userID}
 	return GetDB().Model(p).Association("Responses").Append(response).Error

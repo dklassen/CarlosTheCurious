@@ -145,6 +145,19 @@ func TestSlackPreviewAttachments(t *testing.T) {
 	}
 }
 
+func TestAddResponseFailsWhenWrongAnswer(t *testing.T) {
+	SetupTestDatabase()
+	input := Poll{UUID: "responsetest", Kind: ResponsePoll, PossibleAnswers: []PossibleAnswer{{Value: "1"}}}
+	if err := input.Save(); err != nil {
+		t.Fatal("Did not expect there to be an issuing saving poll")
+	}
+
+	if err := input.AddResponse("bloop", "2"); err == nil {
+		t.Fatal("Expected invalid response")
+	}
+
+}
+
 func TestAddAndGetSavedResponses(t *testing.T) {
 	SetupTestDatabase()
 
