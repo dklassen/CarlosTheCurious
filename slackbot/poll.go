@@ -150,9 +150,15 @@ func (p *Poll) AddResponse(userID, responseValue string) error {
 	return GetDB().Model(p).Association("Responses").Append(response).Error
 }
 
-func (p *Poll) GetResponses() ([]PollResponse, error) {
+func (poll *Poll) GetAnswers() ([]PossibleAnswer, error) {
+	answers := []PossibleAnswer{}
+	err := GetDB().Model(poll).Association("PossibleAnswers").Find(&answers).Error
+	return answers, err
+}
+
+func (poll *Poll) GetResponses() ([]PollResponse, error) {
 	responses := []PollResponse{}
-	err := GetDB().Model(p).Association("Responses").Find(&responses).Error
+	err := GetDB().Model(poll).Association("Responses").Find(&responses).Error
 	return responses, err
 }
 
@@ -268,20 +274,76 @@ func pollTypeField(poll *Poll) AttachmentField {
 	}
 }
 
-func (poll *Poll) SlackPollResultsAttachment() Attachment {
-	attachments := []AttachmentField{}
-	attachments = append(attachments, responseSummaryField(poll))
-
-	responses, err := poll.GetResponses()
-	if err != nil {
-		logrus.Error(err)
+func feedbackResponseField(responses []PollResponse) *AttachmentField {
+	results := "Responses:\n"
+	for i, resp := range responses {
+		results += fmt.Sprintf("\n %d. ", i+1) + resp.Value
 	}
+
+	return &AttachmentField{
+		Title: "Responses:",
+		Value: results,
+		Short: false,
+	}
+}
+
+func responseField(poll *Poll) *AttachmentField {
+	query := `SELECT b.value as possibleAnswer,
+				  count(a.id) as responses
+	FROM poll_responses as a
+	FULL JOIN possible_answers as b
+	ON a.poll_id = b.poll_id AND a.value = b.value
+	WHERE b.poll_id = ?
+	GROUP BY b.value, a.value`
+
+	rows, err := GetDB().Raw(query, poll.ID).Rows()
+	if err != nil {
+		logrus.Panic(err)
+	}
+
+	defer rows.Close()
+
+	var possibleAnswer string
+	var responses int
+
+	totalNumberOfRecipients := poll.numberOfRecipients()
+
+	summary := ""
+	first := true
+	for rows.Next() {
+		rows.Scan(&possibleAnswer, &responses)
+		responsePercent := (float64(responses) / float64(totalNumberOfRecipients)) * 100
+
+		if first {
+			first = false
+			summary += fmt.Sprintf("%s - %d(%d%%)", possibleAnswer, responses, int(responsePercent))
+		} else {
+			summary += " | " + fmt.Sprintf("%s - %d(%d%%)", possibleAnswer, responses, int(responsePercent))
+		}
+	}
+
+	return &AttachmentField{
+		Title: "Responses:",
+		Value: summary,
+		Short: false,
+	}
+
+}
+
+func (poll *Poll) SlackPollSummary() Attachment {
+	attachments := []AttachmentField{}
 
 	results := "Question:\n"
 	results += poll.Question + "\n\n"
-	results += "Responses:"
-	for i, resp := range responses {
-		results += fmt.Sprintf("\n %d. ", i+1) + resp.Value
+
+	if poll.Kind == ResponsePoll {
+		attachments = append(attachments, *responseField(poll))
+	} else {
+		responses, err := poll.GetResponses()
+		if err != nil {
+			logrus.Panic(err)
+		}
+		attachments = append(attachments, *feedbackResponseField(responses))
 	}
 
 	return Attachment{
@@ -289,23 +351,6 @@ func (poll *Poll) SlackPollResultsAttachment() Attachment {
 		Title:  "Survey Results",
 		Text:   results,
 		Fields: attachments,
-	}
-}
-
-func (poll *Poll) SlackPollSummary() Attachment {
-	attachments := []AttachmentField{}
-
-	if poll.Kind == ResponsePoll {
-		attachments = append(attachments, possibleAnswerField(poll))
-	}
-
-	attachments = append(attachments, responseSummaryField(poll))
-
-	return Attachment{
-		Title:   poll.UUID,
-		Pretext: "Here are the results so far:",
-		Text:    poll.Question,
-		Fields:  attachments,
 	}
 }
 
