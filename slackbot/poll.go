@@ -168,9 +168,6 @@ func FindFirstPreActivePollByName(name string) (*Poll, error) {
 	return poll, nil
 }
 
-// FindFirstActivePollByName does what it says and finds the first poll it can that is
-// in the active state
-// NOTE:: OMG this is bad lets get rid of these
 func FindFirstActivePollByUUID(uuid string) (*Poll, error) {
 	poll := &Poll{}
 	GetDB().Where("uuid = ? AND stage = ?", uuid, "active").First(poll)
@@ -181,8 +178,6 @@ func FindFirstActivePollByUUID(uuid string) (*Poll, error) {
 	return poll, nil
 }
 
-// FindFirstActivePollByMessage finds the first active poll using the user and channel
-// NOTE:: OMG this is bad lets get rid of these
 func FindFirstActivePollByMessage(msg Message) (*Poll, error) {
 	poll := &Poll{}
 	GetDB().Where("creator = ? AND channel = ? AND stage = ?", msg.User, msg.Channel, "active").First(&poll)
@@ -193,8 +188,6 @@ func FindFirstActivePollByMessage(msg Message) (*Poll, error) {
 	return poll, nil
 }
 
-// FindFirstActivePollByMessage finds the first active poll using the user and channel
-// NOTE:: OMG this is bad lets get rid of these
 func FindFirstInactivePollByMessage(msg *Message) (*Poll, error) {
 	poll := &Poll{}
 	GetDB().Where("creator = ? AND channel = ? AND stage != ?", msg.User, msg.Channel, "active").First(&poll)
