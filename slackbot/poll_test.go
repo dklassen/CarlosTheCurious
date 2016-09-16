@@ -180,6 +180,30 @@ func TestAddAndGetSavedResponses(t *testing.T) {
 	}
 }
 
+func TestResponseField(t *testing.T) {
+	SetupTestDatabase()
+	var testCases = []struct {
+		Poll               Poll
+		ExpectedAttachment string
+	}{
+		{
+			Poll:               Poll{UUID: "1", Kind: "response", PossibleAnswers: []PossibleAnswer{{Value: "Gorp"}}, Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "derp"}}},
+			ExpectedAttachment: "Gorp - 1(100%)",
+		},
+		{
+			Poll:               Poll{UUID: "2", Kind: "response", PossibleAnswers: []PossibleAnswer{{Value: "Gorp"}, {Value: "Gorm"}}, Responses: []PollResponse{{Value: "Gorp"}}, Recipients: []Recipient{{SlackID: "U125"}, {SlackID: "U123"}}},
+			ExpectedAttachment: "Gorp - 1(50%) | Gorm - 0(0%)",
+		},
+	}
+
+	for _, testCase := range testCases {
+		GetDB().Save(&testCase.Poll)
+		output := *responseField(&testCase.Poll)
+		if strings.Compare(output.Value, testCase.ExpectedAttachment) != 0 {
+			t.Error("Expected attachment field: ", testCase.ExpectedAttachment, " but got: ", output.Value)
+		}
+	}
+}
 func TestResponseSummaryField(t *testing.T) {
 	SetupTestDatabase()
 	var testCases = []struct {
@@ -203,5 +227,4 @@ func TestResponseSummaryField(t *testing.T) {
 			t.Error("Expected attachment field: ", testCase.ExpectedAttachment, " but got: ", output.Value)
 		}
 	}
-
 }

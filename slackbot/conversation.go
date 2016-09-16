@@ -25,7 +25,6 @@ var (
 		"^[cC]ancel poll ([a-zA-Z-0-9-_]+)$":      cancelPoll,
 		"^[aA]nswer poll ([a-zA-Z-0-9-_]+) (.*$)": answerPoll,
 		"^[lL]ist active polls$":                  activePolls,
-		"^[rR]esult poll (.*)$":                   resultPoll,
 		"^[hH]elp":                                usage,
 	}
 )
@@ -184,18 +183,6 @@ func showPoll(robot *Robot, msg *Message, captureGroups []string) error {
 	}
 
 	attachment := poll.SlackPollSummary()
-	return robot.PostMessage(msg.Channel, "", attachment)
-}
-
-func resultPoll(robot *Robot, msg *Message, captureGroups []string) (err error) {
-	uuid := captureGroups[1]
-	poll, err := FindFirstActivePollByUUID(uuid)
-	if err != nil {
-		robot.SendMessage(msg.Channel, fmt.Sprintf("Sorry about this but didn't not find a poll %s", uuid))
-		return err
-	}
-
-	attachment := poll.SlackPollResultsAttachment()
 	return robot.PostMessage(msg.Channel, "", attachment)
 }
 
