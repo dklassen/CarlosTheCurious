@@ -125,8 +125,8 @@ func FindFirstPollByStage(name, stage string) *Poll {
 	return poll
 }
 
-func ValidResponse(response string) bool {
-	rows, _ := GetDB().Raw("select 1 from possible_answers where value = ?", response).Rows()
+func ValidResponse(poll *Poll, response string) bool {
+	rows, _ := GetDB().Raw("SELECT 1 FROM possible_answers WHERE poll_id = ? AND value = ?", poll.ID, response).Rows()
 
 	defer rows.Close()
 	var count int
@@ -141,13 +141,13 @@ func ValidResponse(response string) bool {
 	return true
 }
 
-func (p *Poll) AddResponse(userID, responseValue string) error {
-	if p.Kind == ResponsePoll && !ValidResponse(responseValue) {
-		return errors.New(fmt.Sprintf("Invalid response %s", responseValue))
+func (poll *Poll) AddResponse(userID, responseValue string) error {
+	if poll.Kind == ResponsePoll && !ValidResponse(poll, responseValue) {
+		return fmt.Errorf("Invalid response %s", responseValue)
 	}
 
 	response := PollResponse{Value: responseValue, SlackID: userID}
-	return GetDB().Model(p).Association("Responses").Append(response).Error
+	return GetDB().Model(poll).Association("Responses").Append(response).Error
 }
 
 func (poll *Poll) GetAnswers() ([]PossibleAnswer, error) {
